@@ -1,0 +1,11 @@
+- generic [ref=f5e4]:
+  - heading "Настройки" [level=1] [ref=f5e5]
+  - generic [ref=f5e6]:
+    - generic [ref=f5e7]:
+      - generic [ref=f5e8]: Имя
+      - textbox "Иван" [ref=f5e9]: Тестовый пользователь
+    - generic [ref=f5e10]:
+      - generic [ref=f5e11]: Вес (кг)
+      - spinbutton "70" [ref=f5e12]
+      - generic [ref=f5e13]: "Норма воды: 0 мл"
+  - button "Сохранить настройки" [ref=f5e14] [cursor=pointer]
