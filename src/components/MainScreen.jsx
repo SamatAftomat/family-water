@@ -1,114 +1,116 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getTelegramUser } from '../lib/telegram'
+import { getUserProfile, getTodayLogs, addWaterToDb } from '../lib/api'
 
 const todayKey = () => new Date().toISOString().slice(0, 10)
-const readJson = (key, fallback) => {
-	try {
-		return JSON.parse(localStorage.getItem(key)) ?? fallback
-	} catch {
-		return fallback
-	}
-}
 
 export default function MainScreen() {
 	const userId = Number(getTelegramUser().id)
-	const [profile, setProfile] = useState(() =>
-		readJson('family-water-profile', {
-			first_name: 'Пользователь',
-			weight_kg: 70,
-			water_goal_ml: 2100,
-			diamonds: 0,
-			streak_days: 0
-		})
-	)
-	const [logs, setLogs] = useState(() => readJson('family-water-logs', []))
+
+	// Состояния
+	const [profile, setProfile] = useState(null)
+	const [logs, setLogs] = useState([])
+	const [isLoading, setIsLoading] = useState(true)
+	const [isAdding, setIsAdding] = useState(false)
+
 	const [tab, setTab] = useState('today')
 	const [customAmount, setCustomAmount] = useState('')
 	const [showCustom, setShowCustom] = useState(false)
 	const [settings, setSettings] = useState(false)
 	const [activeInfo, setActiveInfo] = useState(null)
-
-	// Состояние темной темы
 	const [isDark, setIsDark] = useState(
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
 	const today = todayKey()
-	const todayLogs = logs.filter(log => log.date === today)
-	const total = todayLogs.reduce((sum, log) => sum + log.amount, 0)
-	const goal = Number(
-		profile.water_goal_ml || Number(profile.weight_kg || 70) * 30
-	)
+	const total = logs.reduce((sum, log) => sum + log.amount, 0)
+	const goal = Number(profile?.water_goal_ml || 2100)
 	const progress = Math.min(Math.round((total / goal) * 100), 100)
 
+	// Загрузка данных при старте
 	useEffect(() => {
-		localStorage.setItem('family-water-profile', JSON.stringify(profile))
-		localStorage.setItem('family-water-logs', JSON.stringify(logs))
+		async function loadData() {
+			try {
+				const dbProfile = await getUserProfile(userId)
+				const dbLogs = await getTodayLogs(userId, today)
+
+				if (dbProfile) setProfile(dbProfile)
+				else {
+					// Если профиля нет (на случай сбоя), берем локальный
+					setProfile(JSON.parse(localStorage.getItem('family-water-profile')))
+				}
+
+				// Если в базе пусто, но в памяти есть (для оффлайн режима)
+				if (dbLogs.length > 0) setLogs(dbLogs)
+				else
+					setLogs(
+						JSON.parse(localStorage.getItem('family-water-logs'))?.filter(
+							l => l.date === today
+						) || []
+					)
+			} catch (err) {
+				console.error('Ошибка загрузки:', err)
+				// Оффлайн фоллбэк
+				setProfile(JSON.parse(localStorage.getItem('family-water-profile')))
+				setLogs(
+					JSON.parse(localStorage.getItem('family-water-logs'))?.filter(
+						l => l.date === today
+					) || []
+				)
+			} finally {
+				setIsLoading(false)
+			}
+		}
+		loadData()
+	}, [userId, today])
+
+	// Сохраняем тему
+	useEffect(() => {
 		localStorage.setItem('family-water-theme', isDark ? 'dark' : 'light')
-	}, [profile, logs, isDark])
+	}, [isDark])
 
-	function addWater(amount) {
+	async function addWater(amount) {
 		const value = Number(amount)
-		if (!Number.isFinite(value) || value <= 0 || value > 10000) return
 
-		const entry = {
-			id: `${Date.now()}-${Math.random()}`,
-			date: today,
-			amount: Math.round(value),
-			time: new Date().toLocaleTimeString([], {
-				hour: '2-digit',
-				minute: '2-digit'
-			})
+		// Проверки перед отправкой
+		if (!Number.isFinite(value) || value <= 0) return
+		if (value > 2000)
+			return alert('Слишком много за один раз! Максимум 2000 мл.')
+		if (total + value > 5000)
+			return alert('Вы превысили суточный лимит в 5000 мл!')
+
+		setIsAdding(true)
+
+		try {
+			// 1. Отправляем в базу (база сама посчитает стрик и алмазы)
+			await addWaterToDb(userId, value)
+
+			// 2. Перезапрашиваем профиль (чтобы получить новые алмазы и стрик) и логи
+			const updatedProfile = await getUserProfile(userId)
+			const updatedLogs = await getTodayLogs(userId, today)
+
+			setProfile(updatedProfile)
+			setLogs(updatedLogs)
+
+			// 3. Дублируем в память телефона (на случай пропадания интернета)
+			localStorage.setItem(
+				'family-water-profile',
+				JSON.stringify(updatedProfile)
+			)
+			localStorage.setItem('family-water-logs', JSON.stringify(updatedLogs))
+		} catch (err) {
+			alert('Ошибка сохранения: ' + err.message)
+		} finally {
+			setIsAdding(false)
+			setCustomAmount('')
+			setShowCustom(false)
 		}
-
-		setProfile(current => {
-			let newStreak = current.streak_days || 0
-			const lastDate = current.last_water_date
-			const yesterday = new Date()
-			yesterday.setDate(yesterday.getDate() - 1)
-			const yesterdayStr = yesterday.toISOString().slice(0, 10)
-
-			if (lastDate !== today) {
-				if (lastDate === yesterdayStr) newStreak += 1
-				else newStreak = 1
-			}
-
-			const wasComplete = total >= goal
-			const isCompleteNow = total + value >= goal
-			let newDiamonds = current.diamonds || 0
-
-			if (
-				!wasComplete &&
-				isCompleteNow &&
-				current.goal_reached_date !== today
-			) {
-				newDiamonds += 1
-			}
-
-			return {
-				...current,
-				streak_days: newStreak,
-				last_water_date: today,
-				diamonds: newDiamonds,
-				goal_reached_date: isCompleteNow ? today : current.goal_reached_date
-			}
-		})
-
-		setLogs(current => [entry, ...current])
-		setCustomAmount('')
-		setShowCustom(false)
 	}
 
-	function removeLog(id) {
+	async function removeLog(id) {
+		// В MVP мы не удаляем записи из базы, чтобы не ломать логику алмазов.
+		// Если нужно, мы просто скрываем из интерфейса
 		setLogs(current => current.filter(log => log.id !== id))
-	}
-
-	function clearAllLogs() {
-		if (
-			window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?')
-		) {
-			setLogs(current => current.filter(log => log.date !== today))
-		}
 	}
 
 	function saveSettings(event) {
@@ -117,31 +119,44 @@ export default function MainScreen() {
 		const name = String(form.get('name') || '').trim()
 		const weight = Number(form.get('weight'))
 		if (!name || !weight || weight <= 0) return
-		setProfile(current => ({
-			...current,
+
+		const updated = {
+			...profile,
 			first_name: name,
 			weight_kg: weight,
 			water_goal_ml: weight * 30
-		}))
+		}
+		setProfile(updated)
+		localStorage.setItem('family-water-profile', JSON.stringify(updated))
+
+		// Обновляем в базе (в фоне)
+		import('../lib/telegram').then(({ supabase }) => {
+			if (supabase)
+				supabase
+					.from('users')
+					.update({
+						first_name: name,
+						weight_kg: weight,
+						water_goal_ml: weight * 30
+					})
+					.eq('id', userId)
+					.then()
+		})
+
 		setSettings(false)
 	}
 
 	function shareId() {
 		const text = `Добавь меня в семейный трекер воды! Мой ID: ${userId}`
 		const tg = window.Telegram?.WebApp
-
 		if (tg && tg.openTelegramLink) {
-			const url = `https://t.me/share/url?url=${encodeURIComponent(text)}`
-			tg.openTelegramLink(url)
+			tg.openTelegramLink(
+				`https://t.me/share/url?url=${encodeURIComponent(text)}`
+			)
 		} else {
 			navigator.clipboard
 				?.writeText(text)
-				.then(() => {
-					alert(`Текст скопирован! Отправь его другу:\n\n${text}`)
-				})
-				.catch(() => {
-					alert(`Твой ID: ${userId}\n(Скопируй его вручную)`)
-				})
+				.then(() => alert(`ID скопирован: ${userId}`))
 		}
 	}
 
@@ -154,20 +169,37 @@ export default function MainScreen() {
 				return {
 					key,
 					label: date.toLocaleDateString('ru-RU', { weekday: 'short' }),
-					total: logs
-						.filter(log => log.date === key)
-						.reduce((sum, log) => sum + log.amount, 0)
+					total: key === today ? total : 0
 				}
 			}),
-		[logs]
+		[logs, today, total]
 	)
+
+	if (isLoading) {
+		return (
+			<div
+				style={{
+					display: 'flex',
+					justifyContent: 'center',
+					alignItems: 'center',
+					height: '100vh',
+					background: isDark ? '#0f172a' : '#eef5fb',
+					color: isDark ? '#fff' : '#12355b',
+					fontSize: '18px',
+					fontWeight: 'bold'
+				}}
+			>
+				Загрузка данных... 💧
+			</div>
+		)
+	}
 
 	return (
 		<main className={`water-app ${isDark ? 'dark-theme' : ''}`}>
 			<header className="water-header app-topbar">
 				<div className="header-text">
 					<p className="eyebrow">СЕМЕЙНЫЙ ТРЕКЕР</p>
-					<h1>Ассаляму алейкум, {profile.first_name}</h1>
+					<h1>Ассаляму алейкум, {profile?.first_name}</h1>
 				</div>
 				<button
 					className="icon-button"
@@ -181,11 +213,11 @@ export default function MainScreen() {
 			<section className="compact-stats">
 				<div onClick={() => setActiveInfo('diamonds')}>
 					<span>✦</span>
-					<strong>{profile.diamonds || 0}</strong>
+					<strong>{profile?.diamonds || 0}</strong>
 				</div>
 				<div onClick={() => setActiveInfo('streak')}>
 					<span>🔥</span>
-					<strong>{profile.streak_days || 0}</strong>
+					<strong>{profile?.streak_days || 0}</strong>
 				</div>
 				<div onClick={() => setActiveInfo('progress')}>
 					<span>◉</span>
@@ -255,18 +287,21 @@ export default function MainScreen() {
 							<button
 								className="water-button water-button-blue"
 								onClick={() => addWater(100)}
+								disabled={isAdding}
 							>
 								+100
 							</button>
 							<button
 								className="water-button water-button-cyan"
 								onClick={() => addWater(200)}
+								disabled={isAdding}
 							>
 								+200
 							</button>
 							<button
 								className="water-button water-button-green"
 								onClick={() => addWater(300)}
+								disabled={isAdding}
 							>
 								+300
 							</button>
@@ -285,15 +320,18 @@ export default function MainScreen() {
 									type="text"
 									inputMode="numeric"
 									pattern="[0-9]*"
-									min="1"
-									max="10000"
 									value={customAmount}
 									onChange={event =>
 										setCustomAmount(event.target.value.replace(/\D/g, ''))
 									}
 									autoFocus
 								/>
-								<button onClick={() => addWater(customAmount)}>Добавить</button>
+								<button
+									onClick={() => addWater(customAmount)}
+									disabled={isAdding}
+								>
+									Добавить
+								</button>
 							</div>
 						)}
 					</section>
@@ -308,13 +346,13 @@ export default function MainScreen() {
 								Все записи
 							</button>
 						</div>
-						{todayLogs.length === 0 ? (
+						{logs.length === 0 ? (
 							<p className="empty-note">
 								Добавь первый стакан воды за сегодня.
 							</p>
 						) : (
 							<div className="log-list">
-								{todayLogs.slice(0, 4).map(log => (
+								{logs.slice(0, 4).map(log => (
 									<LogRow
 										key={log.id}
 										log={log}
@@ -331,16 +369,7 @@ export default function MainScreen() {
 				<section className="section-block page-block">
 					<div className="section-heading">
 						<h2>Дневник воды</h2>
-						{todayLogs.length > 0 && (
-							<button
-								className="clear-all-btn"
-								onClick={clearAllLogs}
-							>
-								Очистить всё
-							</button>
-						)}
 					</div>
-
 					<span
 						className="date-label"
 						style={{
@@ -351,12 +380,11 @@ export default function MainScreen() {
 					>
 						Сегодня {today}
 					</span>
-
-					{todayLogs.length === 0 ? (
+					{logs.length === 0 ? (
 						<p className="empty-note">Записей пока нет.</p>
 					) : (
 						<div className="log-list">
-							{todayLogs.map(log => (
+							{logs.map(log => (
 								<LogRow
 									key={log.id}
 									log={log}
@@ -372,7 +400,6 @@ export default function MainScreen() {
 				<section className="section-block page-block">
 					<p className="eyebrow">ПОСЛЕДНИЕ 7 ДНЕЙ</p>
 					<h2>Аналитика</h2>
-
 					<div className="chart">
 						{weekData.map(day => (
 							<div
@@ -392,7 +419,6 @@ export default function MainScreen() {
 							</div>
 						))}
 					</div>
-
 					<div className="analytics-summary">
 						<span>
 							Среднее за день{' '}
@@ -505,7 +531,7 @@ export default function MainScreen() {
 							Имя
 							<input
 								name="name"
-								defaultValue={profile.first_name}
+								defaultValue={profile?.first_name}
 							/>
 						</label>
 						<label>
@@ -514,7 +540,7 @@ export default function MainScreen() {
 								name="weight"
 								type="number"
 								min="1"
-								defaultValue={profile.weight_kg}
+								defaultValue={profile?.weight_kg}
 							/>
 						</label>
 						<label>
@@ -524,8 +550,6 @@ export default function MainScreen() {
 								disabled
 							/>
 						</label>
-
-						{/* ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ */}
 						<label
 							style={{
 								flexDirection: 'row',
@@ -540,13 +564,9 @@ export default function MainScreen() {
 								type="checkbox"
 								checked={isDark}
 								onChange={e => setIsDark(e.target.checked)}
-								style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+								style={{ width: '24px', height: '24px' }}
 							/>
 						</label>
-
-						<p className="goal-hint">
-							Новая норма: вес × 30 = {Number(profile.weight_kg || 0) * 30} мл
-						</p>
 						<button className="primary-action">Сохранить</button>
 					</form>
 				</div>
@@ -568,51 +588,27 @@ export default function MainScreen() {
 						>
 							×
 						</button>
-
 						{activeInfo === 'diamonds' && (
 							<>
 								<h2 style={{ color: '#c49b00' }}>✦ Алмазы</h2>
 								<p>
-									Алмазы — это внутренняя валюта приложения. В будущем на них
-									можно будет покупать косметику: красивые фоны для профиля,
-									уникальные цвета имени и иконки.
-								</p>
-								<p>
-									<strong>Как заработать:</strong> выполняй свою дневную норму
-									воды. За каждый день, когда норма достигнута, начисляется 1
-									алмаз.
+									Алмазы — валюта. Выполняй норму воды, чтобы получать 1 алмаз в
+									день.
 								</p>
 							</>
 						)}
-
 						{activeInfo === 'streak' && (
 							<>
-								<h2 style={{ color: '#e65c00' }}>🔥 Дни подряд (Streak)</h2>
-								<p>
-									Streak — это серия дней подряд, в которые ты выполнял норму
-									воды.
-								</p>
-								<p>
-									<strong>Зачем это нужно:</strong> чем длиннее твоя серия, тем
-									больше бонусных алмазов ты получаешь (например, +3 алмаза за 7
-									дней подряд). Но если пропустишь день — серия сгорит и
-									начнется заново!
-								</p>
+								<h2 style={{ color: '#e65c00' }}>🔥 Дни подряд</h2>
+								<p>Пей воду каждый день, чтобы увеличивать серию.</p>
 							</>
 						)}
-
 						{activeInfo === 'progress' && (
 							<>
 								<h2 style={{ color: '#1886ad' }}>◉ Прогресс дня</h2>
 								<p>
-									Этот процент показывает, насколько ты приблизился к своей
-									ежедневной цели.
+									Твоя норма: {goal} мл. Выпито: {total} мл.
 								</p>
-								<p>
-									<strong>Твой расчет:</strong> Твоя норма — {goal} мл. Выпито
-									сегодня: {total} мл.
-								</p>
-								<p>Не забывай пить воду равномерно в течение дня!</p>
 							</>
 						)}
 					</div>

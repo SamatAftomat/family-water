@@ -789,3 +789,9 @@ input {
 	font-size: 14px;
 	text-align: center;
 }
+/* Базовые стили для кнопок */
+button {
+	background: none;
+	border: none;
+	font-family: inherit;
+}
