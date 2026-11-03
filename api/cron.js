@@ -12,18 +12,16 @@ export default async function handler(req, res) {
 	const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
 
 	if (!botToken || !supabaseUrl || !supabaseKey) {
-		return res.status(500).json({ error: 'Missing env variables' })
+		return res
+			.status(500)
+			.json({ error: 'В Vercel не добавлены переменные окружения!' })
 	}
 
 	const supabase = createClient(supabaseUrl, supabaseKey)
-
-	// Получаем текущее время (по UTC)
 	const now = new Date()
-	// Переводим в МСК (UTC+3). Если у тебя другой часовой пояс, измени цифру 3.
 	const hour = (now.getUTCHours() + 3) % 24
 	const today = now.toISOString().slice(0, 10)
 
-	// Определяем тип сообщения по времени
 	let messagePool = []
 	let isThreat = false
 
@@ -33,16 +31,16 @@ export default async function handler(req, res) {
 	else if (hour >= 21 && hour < 23) {
 		messagePool = threatMessages
 		isThreat = true
-	} else return res.status(200).json({ msg: 'Night time, sleep well' })
+	} else return res.status(200).json({ msg: 'Сейчас ночь, бот молчит.' })
 
-	// Получаем всех пользователей
 	const { data: users, error } = await supabase.from('users').select('*')
-	if (error || !users) return res.status(200).json({ msg: 'No users' })
+	if (error || !users || users.length === 0)
+		return res.status(200).json({ msg: 'В базе нет пользователей' })
 
 	let sentCount = 0
+	let errors = []
 
 	for (const user of users) {
-		// Считаем, сколько выпито сегодня
 		const { data: logs } = await supabase
 			.from('water_logs')
 			.select('amount_ml')
@@ -51,27 +49,46 @@ export default async function handler(req, res) {
 
 		const totalDrunk = logs?.reduce((sum, log) => sum + log.amount_ml, 0) || 0
 
-		// Если норма выполнена — сегодня не спамим
-		if (totalDrunk >= user.water_goal_ml) continue
+		if (totalDrunk >= user.water_goal_ml) {
+			errors.push(
+				`Пользователь ${user.id}: норма выполнена, сообщение не отправлено.`
+			)
+			continue
+		}
 
-		// Выбираем случайное сообщение
 		let text = messagePool[Math.floor(Math.random() * messagePool.length)]
-
-		// Если это угроза стрика, подставляем количество дней
 		if (isThreat) {
 			const streak = user.streak_days || 0
-			if (streak === 0) continue // Если стрика нет, не пугаем
+			if (streak === 0) continue
 			text = text.replace('{N}', streak)
 		}
 
-		// Отправляем сообщение
-		await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ chat_id: user.id, text })
-		})
-		sentCount++
+		// Отправляем и смотрим ОТВЕТ от Telegram
+		const tgResponse = await fetch(
+			`https://api.telegram.org/bot${botToken}/sendMessage`,
+			{
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ chat_id: user.id, text })
+			}
+		)
+
+		const tgResult = await tgResponse.json()
+
+		if (tgResult.ok) {
+			sentCount++
+		} else {
+			// Если ошибка — записываем её
+			errors.push(`Ошибка для ID ${user.id}: ${tgResult.description}`)
+		}
 	}
 
-	res.status(200).json({ ok: true, processed: users.length, sent: sentCount })
+	// Сайт покажет нам всё, что произошло
+	res.status(200).json({
+		ok: true,
+		час_на_сервере: hour,
+		всего_юзеров: users.length,
+		успешно_отправлено: sentCount,
+		ошибки: errors
+	})
 }
