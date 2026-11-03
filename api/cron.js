@@ -41,6 +41,22 @@ export default async function handler(req, res) {
 	let errors = []
 
 	for (const user of users) {
+		// 1. ПРОВЕРКА НА ДУБЛИ (если отправляли меньше 2 часов назад — пропускаем)
+		const lastNotified = user.last_notified_at
+			? new Date(user.last_notified_at)
+			: null
+		if (lastNotified) {
+			const diffInMs = now - lastNotified
+			const diffInHours = diffInMs / (1000 * 60 * 60)
+			if (diffInHours < 2) {
+				errors.push(
+					`Пользователь ${user.id}: недавно получал сообщение. Пропускаем, чтобы не спамить.`
+				)
+				continue
+			}
+		}
+
+		// 2. ПРОВЕРКА ВЫПИТОЙ ВОДЫ
 		const { data: logs } = await supabase
 			.from('water_logs')
 			.select('amount_ml')
@@ -56,6 +72,7 @@ export default async function handler(req, res) {
 			continue
 		}
 
+		// 3. ОТПРАВКА СООБЩЕНИЯ
 		let text = messagePool[Math.floor(Math.random() * messagePool.length)]
 		if (isThreat) {
 			const streak = user.streak_days || 0
@@ -63,7 +80,6 @@ export default async function handler(req, res) {
 			text = text.replace('{N}', streak)
 		}
 
-		// Отправляем и смотрим ОТВЕТ от Telegram
 		const tgResponse = await fetch(
 			`https://api.telegram.org/bot${botToken}/sendMessage`,
 			{
@@ -77,13 +93,16 @@ export default async function handler(req, res) {
 
 		if (tgResult.ok) {
 			sentCount++
+			// Записываем в базу время отправки
+			await supabase
+				.from('users')
+				.update({ last_notified_at: now.toISOString() })
+				.eq('id', user.id)
 		} else {
-			// Если ошибка — записываем её
 			errors.push(`Ошибка для ID ${user.id}: ${tgResult.description}`)
 		}
 	}
 
-	// Сайт покажет нам всё, что произошло
 	res.status(200).json({
 		ok: true,
 		час_на_сервере: hour,
