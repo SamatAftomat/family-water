@@ -2,11 +2,12 @@ import { supabase } from './telegram'
 
 export async function getUserProfile(userId) {
 	if (!supabase) return null
+	// Используем maybeSingle, чтобы не было ошибки, если юзера еще нет
 	const { data } = await supabase
 		.from('users')
 		.select('*')
 		.eq('id', userId)
-		.single()
+		.maybeSingle()
 	return data
 }
 
@@ -31,11 +32,33 @@ export async function getTodayLogs(userId, dateStr) {
 	}))
 }
 
-// ДОБАВЛЕНА ПРОВЕРКА: Создаем пользователя, если его нет
+// НОВАЯ ФУНКЦИЯ: Загрузка логов за 7 дней для графика
+export async function getLast7DaysTotal(userId) {
+	if (!supabase) return {}
+
+	const sevenDaysAgo = new Date()
+	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+	const { data } = await supabase
+		.from('water_logs')
+		.select('amount_ml, logged_at')
+		.eq('user_id', userId)
+		.gte('logged_at', sevenDaysAgo.toISOString())
+
+	// Группируем по датам
+	const totals = {}
+	;(data || []).forEach(log => {
+		// Берем только дату YYYY-MM-DD из timestamp
+		const date = new Date(log.logged_at).toISOString().slice(0, 10)
+		totals[date] = (totals[date] || 0) + log.amount_ml
+	})
+
+	return totals
+}
+
 export async function addWaterToDb(userId, amount, profile) {
 	if (!supabase) throw new Error('Нет подключения к базе')
 
-	// 1. Убеждаемся, что пользователь есть в базе (на случай смены устройства)
 	const { error: upsertError } = await supabase.from('users').upsert({
 		id: userId,
 		first_name: profile?.first_name || 'Пользователь',
@@ -45,11 +68,16 @@ export async function addWaterToDb(userId, amount, profile) {
 
 	if (upsertError) throw new Error('Ошибка профиля: ' + upsertError.message)
 
-	// 2. Записываем воду
 	const { error: rpcError } = await supabase.rpc('record_water_log', {
 		p_user_id: userId,
 		p_amount_ml: amount
 	})
 
 	if (rpcError) throw new Error(rpcError.message)
+}
+
+// НОВАЯ ФУНКЦИЯ: Удаление записи из базы
+export async function deleteLogFromDb(logId) {
+	if (!supabase) return
+	await supabase.from('water_logs').delete().eq('id', logId)
 }

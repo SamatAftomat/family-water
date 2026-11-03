@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getTelegramUser } from '../lib/telegram'
-import { getUserProfile, getTodayLogs, addWaterToDb } from '../lib/api'
+import {
+	getUserProfile,
+	getTodayLogs,
+	addWaterToDb,
+	deleteLogFromDb,
+	getLast7DaysTotal
+} from '../lib/api'
+import { supabase } from '../lib/telegram'
 
 const todayKey = () => new Date().toISOString().slice(0, 10)
 
@@ -9,6 +16,7 @@ function MainScreen() {
 
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
+	const [chartTotals, setChartTotals] = useState({}) // Для графика
 	const [isLoading, setIsLoading] = useState(true)
 	const [isAdding, setIsAdding] = useState(false)
 
@@ -31,9 +39,10 @@ function MainScreen() {
 			try {
 				const dbProfile = await getUserProfile(userId)
 				const dbLogs = await getTodayLogs(userId, today)
+				const totals7Days = await getLast7DaysTotal(userId) // Загружаем график
 
 				if (dbProfile) setProfile(dbProfile)
-				else {
+				else
 					setProfile(
 						JSON.parse(localStorage.getItem('family-water-profile')) || {
 							first_name: 'Пользователь',
@@ -41,15 +50,9 @@ function MainScreen() {
 							water_goal_ml: 2100
 						}
 					)
-				}
 
-				if (dbLogs.length > 0) setLogs(dbLogs)
-				else
-					setLogs(
-						JSON.parse(localStorage.getItem('family-water-logs'))?.filter(
-							l => l.date === today
-						) || []
-					)
+				setLogs(dbLogs)
+				setChartTotals(totals7Days)
 			} catch (err) {
 				console.error('Ошибка загрузки:', err)
 				setProfile(
@@ -58,11 +61,6 @@ function MainScreen() {
 						weight_kg: 70,
 						water_goal_ml: 2100
 					}
-				)
-				setLogs(
-					JSON.parse(localStorage.getItem('family-water-logs'))?.filter(
-						l => l.date === today
-					) || []
 				)
 			} finally {
 				setIsLoading(false)
@@ -77,7 +75,6 @@ function MainScreen() {
 
 	async function addWater(amount) {
 		const value = Number(amount)
-
 		if (!Number.isFinite(value) || value <= 0) return
 		if (value > 2000)
 			return alert('Слишком много за один раз! Максимум 2000 мл.')
@@ -85,22 +82,21 @@ function MainScreen() {
 			return alert('Вы превысили суточный лимит в 5000 мл!')
 
 		setIsAdding(true)
-
 		try {
-			// Передаем profile, чтобы база создала пользователя, если его нет
 			await addWaterToDb(userId, value, profile)
 
 			const updatedProfile = await getUserProfile(userId)
 			const updatedLogs = await getTodayLogs(userId, today)
+			const totals7Days = await getLast7DaysTotal(userId)
 
 			setProfile(updatedProfile)
 			setLogs(updatedLogs)
+			setChartTotals(totals7Days)
 
 			localStorage.setItem(
 				'family-water-profile',
 				JSON.stringify(updatedProfile)
 			)
-			localStorage.setItem('family-water-logs', JSON.stringify(updatedLogs))
 		} catch (err) {
 			alert('Ошибка сохранения: ' + err.message)
 		} finally {
@@ -110,8 +106,29 @@ function MainScreen() {
 		}
 	}
 
-	function removeLog(id) {
+	// РЕАЛЬНОЕ УДАЛЕНИЕ
+	async function removeLog(id) {
+		if (!window.confirm('Удалить эту запись?')) return
+		await deleteLogFromDb(id)
 		setLogs(current => current.filter(log => log.id !== id))
+		const totals7Days = await getLast7DaysTotal(userId)
+		setChartTotals(totals7Days)
+	}
+
+	// Очистка ВСЕХ записей за сегодня
+	async function clearAllLogs() {
+		if (!window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?'))
+			return
+		if (!supabase) return
+
+		await supabase
+			.from('water_logs')
+			.delete()
+			.eq('user_id', userId)
+			.gte('logged_at', `${today}T00:00:00Z`)
+		setLogs([])
+		const totals7Days = await getLast7DaysTotal(userId)
+		setChartTotals(totals7Days)
 	}
 
 	function saveSettings(event) {
@@ -130,19 +147,17 @@ function MainScreen() {
 		setProfile(updated)
 		localStorage.setItem('family-water-profile', JSON.stringify(updated))
 
-		import('../lib/telegram').then(({ supabase }) => {
-			if (supabase)
-				supabase
-					.from('users')
-					.update({
-						first_name: name,
-						weight_kg: weight,
-						water_goal_ml: weight * 30
-					})
-					.eq('id', userId)
-					.then()
-		})
-
+		if (supabase) {
+			supabase
+				.from('users')
+				.update({
+					first_name: name,
+					weight_kg: weight,
+					water_goal_ml: weight * 30
+				})
+				.eq('id', userId)
+				.then()
+		}
 		setSettings(false)
 	}
 
@@ -160,6 +175,7 @@ function MainScreen() {
 		}
 	}
 
+	// Используем реальные данные для графика
 	const weekData = useMemo(
 		() =>
 			Array.from({ length: 7 }, (_, index) => {
@@ -169,10 +185,10 @@ function MainScreen() {
 				return {
 					key,
 					label: date.toLocaleDateString('ru-RU', { weekday: 'short' }),
-					total: key === today ? total : 0
+					total: key === today ? total : chartTotals[key] || 0
 				}
 			}),
-		[logs, today, total]
+		[logs, today, total, chartTotals]
 	)
 
 	if (isLoading) {
@@ -196,6 +212,7 @@ function MainScreen() {
 
 	return (
 		<main className={`water-app ${isDark ? 'dark-theme' : ''}`}>
+			{/* ... Шапка ... */}
 			<header className="water-header app-topbar">
 				<div className="header-text">
 					<p className="eyebrow">СЕМЕЙНЫЙ ТРЕКЕР</p>
@@ -272,7 +289,6 @@ function MainScreen() {
 								<small>из {goal} мл</small>
 							</div>
 						</div>
-
 						<div className="progress-copy">
 							<span>Выпито сегодня</span>
 							<strong>{total} мл</strong>
@@ -282,7 +298,6 @@ function MainScreen() {
 									: 'Норма выполнена!'}
 							</small>
 						</div>
-
 						<div className="water-actions">
 							<button
 								className="water-button water-button-blue"
@@ -306,14 +321,12 @@ function MainScreen() {
 								+300
 							</button>
 						</div>
-
 						<button
 							className="custom-water"
 							onClick={() => setShowCustom(value => !value)}
 						>
 							{showCustom ? '✕ Скрыть' : '＋ Другое количество'}
 						</button>
-
 						{showCustom && (
 							<div className="custom-form">
 								<input
@@ -369,6 +382,14 @@ function MainScreen() {
 				<section className="section-block page-block">
 					<div className="section-heading">
 						<h2>Дневник воды</h2>
+						{logs.length > 0 && (
+							<button
+								className="clear-all-btn"
+								onClick={clearAllLogs}
+							>
+								Очистить всё
+							</button>
+						)}
 					</div>
 					<span
 						className="date-label"
@@ -588,14 +609,12 @@ function MainScreen() {
 						>
 							×
 						</button>
-
 						{activeInfo === 'diamonds' && (
 							<>
 								<h2 style={{ color: '#c49b00' }}>✦ Алмазы</h2>
 								<p>
 									Алмазы — это внутренняя валюта приложения. В будущем на них
-									можно будет покупать косметику: красивые фоны для профиля,
-									уникальные цвета имени и иконки.
+									можно будет покупать косметику.
 								</p>
 								<p>
 									<strong>Как заработать:</strong> выполняй свою дневную норму
@@ -604,7 +623,6 @@ function MainScreen() {
 								</p>
 							</>
 						)}
-
 						{activeInfo === 'streak' && (
 							<>
 								<h2 style={{ color: '#e65c00' }}>🔥 Дни подряд (Streak)</h2>
@@ -614,13 +632,11 @@ function MainScreen() {
 								</p>
 								<p>
 									<strong>Зачем это нужно:</strong> чем длиннее твоя серия, тем
-									больше бонусных алмазов ты получаешь (например, +3 алмаза за 7
-									дней подряд). Но если пропустишь день — серия сгорит и
-									начнется заново!
+									больше бонусных алмазов ты получаешь. Но если пропустишь день
+									— серия сгорит!
 								</p>
 							</>
 						)}
-
 						{activeInfo === 'progress' && (
 							<>
 								<h2 style={{ color: '#1886ad' }}>◉ Прогресс дня</h2>
@@ -632,7 +648,6 @@ function MainScreen() {
 									<strong>Твой расчет:</strong> Твоя норма — {goal} мл. Выпито
 									сегодня: {total} мл.
 								</p>
-								<p>Не забывай пить воду равномерно в течение дня!</p>
 							</>
 						)}
 					</div>
@@ -673,5 +688,4 @@ function NavButton({ active, icon, label, onClick }) {
 	)
 }
 
-// Вот та самая спасительная строчка:
 export default MainScreen
