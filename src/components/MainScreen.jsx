@@ -7,7 +7,6 @@ const todayKey = () => new Date().toISOString().slice(0, 10)
 export default function MainScreen() {
 	const userId = Number(getTelegramUser().id)
 
-	// Состояния
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
 	const [isLoading, setIsLoading] = useState(true)
@@ -27,7 +26,6 @@ export default function MainScreen() {
 	const goal = Number(profile?.water_goal_ml || 2100)
 	const progress = Math.min(Math.round((total / goal) * 100), 100)
 
-	// Загрузка данных при старте
 	useEffect(() => {
 		async function loadData() {
 			try {
@@ -36,11 +34,9 @@ export default function MainScreen() {
 
 				if (dbProfile) setProfile(dbProfile)
 				else {
-					// Если профиля нет (на случай сбоя), берем локальный
 					setProfile(JSON.parse(localStorage.getItem('family-water-profile')))
 				}
 
-				// Если в базе пусто, но в памяти есть (для оффлайн режима)
 				if (dbLogs.length > 0) setLogs(dbLogs)
 				else
 					setLogs(
@@ -50,7 +46,6 @@ export default function MainScreen() {
 					)
 			} catch (err) {
 				console.error('Ошибка загрузки:', err)
-				// Оффлайн фоллбэк
 				setProfile(JSON.parse(localStorage.getItem('family-water-profile')))
 				setLogs(
 					JSON.parse(localStorage.getItem('family-water-logs'))?.filter(
@@ -64,7 +59,6 @@ export default function MainScreen() {
 		loadData()
 	}, [userId, today])
 
-	// Сохраняем тему
 	useEffect(() => {
 		localStorage.setItem('family-water-theme', isDark ? 'dark' : 'light')
 	}, [isDark])
@@ -72,7 +66,6 @@ export default function MainScreen() {
 	async function addWater(amount) {
 		const value = Number(amount)
 
-		// Проверки перед отправкой
 		if (!Number.isFinite(value) || value <= 0) return
 		if (value > 2000)
 			return alert('Слишком много за один раз! Максимум 2000 мл.')
@@ -82,17 +75,14 @@ export default function MainScreen() {
 		setIsAdding(true)
 
 		try {
-			// 1. Отправляем в базу (база сама посчитает стрик и алмазы)
 			await addWaterToDb(userId, value)
 
-			// 2. Перезапрашиваем профиль (чтобы получить новые алмазы и стрик) и логи
 			const updatedProfile = await getUserProfile(userId)
 			const updatedLogs = await getTodayLogs(userId, today)
 
 			setProfile(updatedProfile)
 			setLogs(updatedLogs)
 
-			// 3. Дублируем в память телефона (на случай пропадания интернета)
 			localStorage.setItem(
 				'family-water-profile',
 				JSON.stringify(updatedProfile)
@@ -108,8 +98,6 @@ export default function MainScreen() {
 	}
 
 	async function removeLog(id) {
-		// В MVP мы не удаляем записи из базы, чтобы не ломать логику алмазов.
-		// Если нужно, мы просто скрываем из интерфейса
 		setLogs(current => current.filter(log => log.id !== id))
 	}
 
@@ -129,7 +117,6 @@ export default function MainScreen() {
 		setProfile(updated)
 		localStorage.setItem('family-water-profile', JSON.stringify(updated))
 
-		// Обновляем в базе (в фоне)
 		import('../lib/telegram').then(({ supabase }) => {
 			if (supabase)
 				supabase
@@ -572,6 +559,7 @@ export default function MainScreen() {
 				</div>
 			)}
 
+			{/* ВОЗВРАЩАЕМ ПОДРОБНЫЕ ТЕКСТЫ */}
 			{activeInfo && (
 				<div
 					className="modal-backdrop"
@@ -588,27 +576,51 @@ export default function MainScreen() {
 						>
 							×
 						</button>
+
 						{activeInfo === 'diamonds' && (
 							<>
 								<h2 style={{ color: '#c49b00' }}>✦ Алмазы</h2>
 								<p>
-									Алмазы — валюта. Выполняй норму воды, чтобы получать 1 алмаз в
-									день.
+									Алмазы — это внутренняя валюта приложения. В будущем на них
+									можно будет покупать косметику: красивые фоны для профиля,
+									уникальные цвета имени и иконки.
+								</p>
+								<p>
+									<strong>Как заработать:</strong> выполняй свою дневную норму
+									воды. За каждый день, когда норма достигнута, начисляется 1
+									алмаз.
 								</p>
 							</>
 						)}
+
 						{activeInfo === 'streak' && (
 							<>
-								<h2 style={{ color: '#e65c00' }}>🔥 Дни подряд</h2>
-								<p>Пей воду каждый день, чтобы увеличивать серию.</p>
+								<h2 style={{ color: '#e65c00' }}>🔥 Дни подряд (Streak)</h2>
+								<p>
+									Streak — это серия дней подряд, в которые ты выполнял норму
+									воды.
+								</p>
+								<p>
+									<strong>Зачем это нужно:</strong> чем длиннее твоя серия, тем
+									больше бонусных алмазов ты получаешь (например, +3 алмаза за 7
+									дней подряд). Но если пропустишь день — серия сгорит и
+									начнется заново!
+								</p>
 							</>
 						)}
+
 						{activeInfo === 'progress' && (
 							<>
 								<h2 style={{ color: '#1886ad' }}>◉ Прогресс дня</h2>
 								<p>
-									Твоя норма: {goal} мл. Выпито: {total} мл.
+									Этот процент показывает, насколько ты приблизился к своей
+									ежедневной цели.
 								</p>
+								<p>
+									<strong>Твой расчет:</strong> Твоя норма — {goal} мл. Выпито
+									сегодня: {total} мл.
+								</p>
+								<p>Не забывай пить воду равномерно в течение дня!</p>
 							</>
 						)}
 					</div>
