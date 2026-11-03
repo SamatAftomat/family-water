@@ -16,7 +16,7 @@ function MainScreen() {
 
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
-	const [chartTotals, setChartTotals] = useState({}) // Для графика
+	const [chartTotals, setChartTotals] = useState({})
 	const [isLoading, setIsLoading] = useState(true)
 	const [isAdding, setIsAdding] = useState(false)
 
@@ -34,12 +34,31 @@ function MainScreen() {
 	const goal = Number(profile?.water_goal_ml || 2100)
 	const progress = Math.min(Math.round((total / goal) * 100), 100)
 
+	// ЛОГИКА СГОРАНИЯ СТРИКА
+	const effectiveStreak = useMemo(() => {
+		if (!profile?.goal_reached_date) return 0
+
+		const yesterday = new Date()
+		yesterday.setDate(yesterday.getDate() - 1)
+		const yesterdayStr = yesterday.toISOString().slice(0, 10)
+
+		// Если норма выполнена сегодня или вчера — стрик живой
+		if (
+			profile.goal_reached_date === today ||
+			profile.goal_reached_date === yesterdayStr
+		) {
+			return profile.streak_days || 0
+		}
+		// Иначе сгорел
+		return 0
+	}, [profile, today])
+
 	useEffect(() => {
 		async function loadData() {
 			try {
 				const dbProfile = await getUserProfile(userId)
 				const dbLogs = await getTodayLogs(userId, today)
-				const totals7Days = await getLast7DaysTotal(userId) // Загружаем график
+				const totals7Days = await getLast7DaysTotal(userId)
 
 				if (dbProfile) setProfile(dbProfile)
 				else
@@ -106,7 +125,6 @@ function MainScreen() {
 		}
 	}
 
-	// РЕАЛЬНОЕ УДАЛЕНИЕ
 	async function removeLog(id) {
 		if (!window.confirm('Удалить эту запись?')) return
 		await deleteLogFromDb(id)
@@ -115,7 +133,6 @@ function MainScreen() {
 		setChartTotals(totals7Days)
 	}
 
-	// Очистка ВСЕХ записей за сегодня
 	async function clearAllLogs() {
 		if (!window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?'))
 			return
@@ -175,7 +192,6 @@ function MainScreen() {
 		}
 	}
 
-	// Используем реальные данные для графика
 	const weekData = useMemo(
 		() =>
 			Array.from({ length: 7 }, (_, index) => {
@@ -212,7 +228,6 @@ function MainScreen() {
 
 	return (
 		<main className={`water-app ${isDark ? 'dark-theme' : ''}`}>
-			{/* ... Шапка ... */}
 			<header className="water-header app-topbar">
 				<div className="header-text">
 					<p className="eyebrow">СЕМЕЙНЫЙ ТРЕКЕР</p>
@@ -234,7 +249,7 @@ function MainScreen() {
 				</div>
 				<div onClick={() => setActiveInfo('streak')}>
 					<span>🔥</span>
-					<strong>{profile?.streak_days || 0}</strong>
+					<strong>{effectiveStreak}</strong>
 				</div>
 				<div onClick={() => setActiveInfo('progress')}>
 					<span>◉</span>
@@ -289,6 +304,7 @@ function MainScreen() {
 								<small>из {goal} мл</small>
 							</div>
 						</div>
+
 						<div className="progress-copy">
 							<span>Выпито сегодня</span>
 							<strong>{total} мл</strong>
@@ -298,6 +314,7 @@ function MainScreen() {
 									: 'Норма выполнена!'}
 							</small>
 						</div>
+
 						<div className="water-actions">
 							<button
 								className="water-button water-button-blue"
@@ -321,12 +338,14 @@ function MainScreen() {
 								+300
 							</button>
 						</div>
+
 						<button
 							className="custom-water"
 							onClick={() => setShowCustom(value => !value)}
 						>
 							{showCustom ? '✕ Скрыть' : '＋ Другое количество'}
 						</button>
+
 						{showCustom && (
 							<div className="custom-form">
 								<input
@@ -609,12 +628,14 @@ function MainScreen() {
 						>
 							×
 						</button>
+
 						{activeInfo === 'diamonds' && (
 							<>
 								<h2 style={{ color: '#c49b00' }}>✦ Алмазы</h2>
 								<p>
 									Алмазы — это внутренняя валюта приложения. В будущем на них
-									можно будет покупать косметику.
+									можно будет покупать косметику: красивые фоны для профиля,
+									уникальные цвета имени и иконки.
 								</p>
 								<p>
 									<strong>Как заработать:</strong> выполняй свою дневную норму
@@ -623,6 +644,7 @@ function MainScreen() {
 								</p>
 							</>
 						)}
+
 						{activeInfo === 'streak' && (
 							<>
 								<h2 style={{ color: '#e65c00' }}>🔥 Дни подряд (Streak)</h2>
@@ -632,11 +654,13 @@ function MainScreen() {
 								</p>
 								<p>
 									<strong>Зачем это нужно:</strong> чем длиннее твоя серия, тем
-									больше бонусных алмазов ты получаешь. Но если пропустишь день
-									— серия сгорит!
+									больше бонусных алмазов ты получаешь (например, +3 алмаза за 7
+									дней подряд). Но если пропустишь день — серия сгорит и
+									начнется заново!
 								</p>
 							</>
 						)}
+
 						{activeInfo === 'progress' && (
 							<>
 								<h2 style={{ color: '#1886ad' }}>◉ Прогресс дня</h2>
@@ -648,6 +672,7 @@ function MainScreen() {
 									<strong>Твой расчет:</strong> Твоя норма — {goal} мл. Выпито
 									сегодня: {total} мл.
 								</p>
+								<p>Не забывай пить воду равномерно в течение дня!</p>
 							</>
 						)}
 					</div>
