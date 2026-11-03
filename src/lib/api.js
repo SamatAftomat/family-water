@@ -31,11 +31,25 @@ export async function getTodayLogs(userId, dateStr) {
 	}))
 }
 
-export async function addWaterToDb(userId, amount) {
+// ДОБАВЛЕНА ПРОВЕРКА: Создаем пользователя, если его нет
+export async function addWaterToDb(userId, amount, profile) {
 	if (!supabase) throw new Error('Нет подключения к базе')
-	const { error } = await supabase.rpc('record_water_log', {
+
+	// 1. Убеждаемся, что пользователь есть в базе (на случай смены устройства)
+	const { error: upsertError } = await supabase.from('users').upsert({
+		id: userId,
+		first_name: profile?.first_name || 'Пользователь',
+		weight_kg: profile?.weight_kg || 70,
+		water_goal_ml: profile?.water_goal_ml || 2100
+	})
+
+	if (upsertError) throw new Error('Ошибка профиля: ' + upsertError.message)
+
+	// 2. Записываем воду
+	const { error: rpcError } = await supabase.rpc('record_water_log', {
 		p_user_id: userId,
 		p_amount_ml: amount
 	})
-	if (error) throw new Error(error.message)
+
+	if (rpcError) throw new Error(rpcError.message)
 }
