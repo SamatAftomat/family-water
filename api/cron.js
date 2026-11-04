@@ -7,6 +7,20 @@ import {
 } from './messages.js'
 
 export default async function handler(req, res) {
+	// 1. ПРОВЕРКА СЕКРЕТНОГО КЛЮЧА
+	const { searchParams } = new URL(
+		req.url,
+		`https://${req.headers.host || 'localhost'}`
+	)
+	const secret = searchParams.get('key')
+
+	// Если ключ не совпадает — выдаем ошибку
+	if (secret !== 'water_secret_2024') {
+		return res
+			.status(401)
+			.json({ error: 'Unauthorized: Неверный или отсутствующий ключ доступа' })
+	}
+
 	const botToken = process.env.TELEGRAM_BOT_TOKEN
 	const supabaseUrl = process.env.VITE_SUPABASE_URL
 	const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
@@ -19,6 +33,8 @@ export default async function handler(req, res) {
 
 	const supabase = createClient(supabaseUrl, supabaseKey)
 	const now = new Date()
+
+	// Переводим время в МСК (UTC+3)
 	const hour = (now.getUTCHours() + 3) % 24
 	const today = now.toISOString().slice(0, 10)
 
@@ -31,7 +47,10 @@ export default async function handler(req, res) {
 	else if (hour >= 21 && hour < 23) {
 		messagePool = threatMessages
 		isThreat = true
-	} else return res.status(200).json({ msg: 'Сейчас ночь, бот молчит.' })
+	} else
+		return res
+			.status(200)
+			.json({ msg: `Сейчас ночь (${hour} ч. по МСК), бот молчит.` })
 
 	const { data: users, error } = await supabase.from('users').select('*')
 	if (error || !users || users.length === 0)
@@ -41,7 +60,7 @@ export default async function handler(req, res) {
 	let errors = []
 
 	for (const user of users) {
-		// 1. ПРОВЕРКА НА ДУБЛИ (если отправляли меньше 2 часов назад — пропускаем)
+		// 2. ПРОВЕРКА НА ДУБЛИ (если отправляли меньше 2 часов назад)
 		const lastNotified = user.last_notified_at
 			? new Date(user.last_notified_at)
 			: null
@@ -56,7 +75,7 @@ export default async function handler(req, res) {
 			}
 		}
 
-		// 2. ПРОВЕРКА ВЫПИТОЙ ВОДЫ
+		// 3. ПРОВЕРКА ВЫПИТОЙ ВОДЫ
 		const { data: logs } = await supabase
 			.from('water_logs')
 			.select('amount_ml')
@@ -72,7 +91,7 @@ export default async function handler(req, res) {
 			continue
 		}
 
-		// 3. ОТПРАВКА СООБЩЕНИЯ
+		// 4. ОТПРАВКА
 		let text = messagePool[Math.floor(Math.random() * messagePool.length)]
 		if (isThreat) {
 			const streak = user.streak_days || 0
@@ -93,7 +112,7 @@ export default async function handler(req, res) {
 
 		if (tgResult.ok) {
 			sentCount++
-			// Записываем в базу время отправки
+			// Записываем время отправки
 			await supabase
 				.from('users')
 				.update({ last_notified_at: now.toISOString() })
@@ -105,7 +124,7 @@ export default async function handler(req, res) {
 
 	res.status(200).json({
 		ok: true,
-		час_на_сервере: hour,
+		час_на_сервере_мск: hour,
 		всего_юзеров: users.length,
 		успешно_отправлено: sentCount,
 		ошибки: errors
