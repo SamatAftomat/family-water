@@ -14,20 +14,27 @@ export async function getUserProfile(userId) {
 	return data
 }
 
+// Получаем логи за сегодня с учетом ЛОКАЛЬНОГО часового пояса
 export async function getTodayLogs(userId, dateStr) {
 	if (!supabase) return []
+
+	// Устанавливаем границы дня по твоему местному времени
+	const startOfDay = new Date(`${dateStr}T00:00:00`)
+	const endOfDay = new Date(`${dateStr}T23:59:59.999`)
+
 	const { data } = await supabase
 		.from('water_logs')
 		.select('*')
 		.eq('user_id', userId)
-		.gte('logged_at', `${dateStr}T00:00:00Z`)
-		.lte('logged_at', `${dateStr}T23:59:59Z`)
+		.gte('logged_at', startOfDay.toISOString())
+		.lte('logged_at', endOfDay.toISOString())
 		.order('logged_at', { ascending: false })
 
 	return (data || []).map(log => ({
 		id: log.id.toString(),
 		amount: log.amount_ml,
-		time: new Date(log.logged_at).toLocaleTimeString([], {
+		// Указываем 'ru-RU', чтобы время выводилось в твоем часовом поясе (09:00, а не 06:00)
+		time: new Date(log.logged_at).toLocaleTimeString('ru-RU', {
 			hour: '2-digit',
 			minute: '2-digit'
 		}),
@@ -40,6 +47,7 @@ export async function getLast7DaysTotal(userId) {
 
 	const sevenDaysAgo = new Date()
 	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+	sevenDaysAgo.setHours(0, 0, 0, 0)
 
 	const { data } = await supabase
 		.from('water_logs')
@@ -49,8 +57,10 @@ export async function getLast7DaysTotal(userId) {
 
 	const totals = {}
 	;(data || []).forEach(log => {
-		const date = new Date(log.logged_at).toISOString().slice(0, 10)
-		totals[date] = (totals[date] || 0) + log.amount_ml
+		// Группируем по локальной дате пользователя
+		const d = new Date(log.logged_at)
+		const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+		totals[localDate] = (totals[localDate] || 0) + log.amount_ml
 	})
 
 	return totals
@@ -170,11 +180,16 @@ export async function getFamilyData(userId, dateStr) {
 		.select('*')
 		.in('id', memberIds)
 
+	// Для семьи тоже берем правильные границы дня
+	const startOfDay = new Date(`${dateStr}T00:00:00`)
+	const endOfDay = new Date(`${dateStr}T23:59:59.999`)
+
 	const { data: logs } = await supabase
 		.from('water_logs')
 		.select('user_id, amount_ml')
 		.in('user_id', memberIds)
-		.gte('logged_at', `${dateStr}T00:00:00Z`)
+		.gte('logged_at', startOfDay.toISOString())
+		.lte('logged_at', endOfDay.toISOString())
 
 	const members = (profiles || []).map(p => {
 		const drank = (logs || [])
@@ -195,11 +210,8 @@ export async function respondToRequest(linkId, status) {
 	await supabase.from('family_links').update({ status }).eq('id', linkId)
 }
 
-// НОВАЯ ФУНКЦИЯ: Отвязать члена семьи
 export async function removeFamilyLink(userId, memberId) {
 	if (!supabase) return
-
-	// Удаляем связь между двумя пользователями (в любую сторону)
 	await supabase
 		.from('family_links')
 		.delete()

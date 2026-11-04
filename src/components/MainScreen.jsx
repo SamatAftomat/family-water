@@ -13,7 +13,10 @@ import {
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
-const todayKey = () => new Date().toISOString().slice(0, 10)
+const todayKey = () => {
+	const d = new Date()
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
@@ -25,6 +28,7 @@ function MainScreen() {
 	const [isAdding, setIsAdding] = useState(false)
 
 	const [tab, setTab] = useState('today')
+	const [slideDir, setSlideDir] = useState('fade') // Направление анимации
 	const [customAmount, setCustomAmount] = useState('')
 	const [showCustom, setShowCustom] = useState(false)
 	const [settings, setSettings] = useState(false)
@@ -46,7 +50,7 @@ function MainScreen() {
 	// --- ЛОГИКА СВАЙПОВ ---
 	const touchStart = useRef(null)
 	const touchEnd = useRef(null)
-	const minSwipeDistance = 50 // Минимальная длина свайпа в пикселях
+	const minSwipeDistance = 50
 	const tabsOrder = ['today', 'diary', 'analytics', 'family']
 
 	const onTouchStart = e => {
@@ -67,11 +71,18 @@ function MainScreen() {
 		const currentIndex = tabsOrder.indexOf(tab)
 
 		if (isLeftSwipe && currentIndex < tabsOrder.length - 1) {
+			setSlideDir('left')
 			setTab(tabsOrder[currentIndex + 1])
 		}
 		if (isRightSwipe && currentIndex > 0) {
+			setSlideDir('right')
 			setTab(tabsOrder[currentIndex - 1])
 		}
+	}
+
+	const changeTab = newTab => {
+		setSlideDir('fade') // При клике на кнопку делаем плавное появление
+		setTab(newTab)
 	}
 	// -----------------------
 
@@ -276,7 +287,7 @@ function MainScreen() {
 			Array.from({ length: 7 }, (_, index) => {
 				const date = new Date()
 				date.setDate(date.getDate() - (6 - index))
-				const key = date.toISOString().slice(0, 10)
+				const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 				return {
 					key,
 					label: date.toLocaleDateString('ru-RU', { weekday: 'short' }),
@@ -336,9 +347,12 @@ function MainScreen() {
 				</div>
 			</section>
 
-			{/* ОБЕРТКА ДЛЯ СВАЙПОВ */}
+			{/* АНИМАЦИЯ ПРИ ПЕРЕКЛЮЧЕНИИ ВКЛАДОК */}
 			<div
-				className="swipe-container"
+				className={`swipe-container slide-${slideDir}`}
+				key={
+					tab
+				} /* key заставляет React пересоздать узел и запустить анимацию */
 				onTouchStart={onTouchStart}
 				onTouchMove={onTouchMove}
 				onTouchEnd={onTouchEnd}
@@ -455,7 +469,7 @@ function MainScreen() {
 								<h2>Последние записи</h2>
 								<button
 									className="link-button"
-									onClick={() => setTab('diary')}
+									onClick={() => changeTab('diary')}
 								>
 									Все записи
 								</button>
@@ -723,25 +737,25 @@ function MainScreen() {
 					active={tab === 'today'}
 					icon="⌂"
 					label="Сегодня"
-					onClick={() => setTab('today')}
+					onClick={() => changeTab('today')}
 				/>
 				<NavButton
 					active={tab === 'diary'}
 					icon="☷"
 					label="Дневник"
-					onClick={() => setTab('diary')}
+					onClick={() => changeTab('diary')}
 				/>
 				<NavButton
 					active={tab === 'analytics'}
 					icon="▥"
 					label="Аналитика"
-					onClick={() => setTab('analytics')}
+					onClick={() => changeTab('analytics')}
 				/>
 				<NavButton
 					active={tab === 'family'}
 					icon="♧"
 					label="Семья"
-					onClick={() => setTab('family')}
+					onClick={() => changeTab('family')}
 				/>
 			</nav>
 
