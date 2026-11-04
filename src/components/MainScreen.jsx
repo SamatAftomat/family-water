@@ -513,7 +513,7 @@ function MainScreen() {
 					<button
 						className="primary-action"
 						onClick={shareId}
-						style={{ marginBottom: '16px', marginTop: '8px' }}
+						style={{ marginBottom: '20px', marginTop: '8px' }}
 					>
 						↗ Поделиться моим ID
 					</button>
@@ -523,23 +523,17 @@ function MainScreen() {
 							style={{
 								color: familyMsg.includes('❌') ? '#c17575' : '#0ba360',
 								fontSize: '14px',
-								marginBottom: '12px'
+								marginBottom: '16px',
+								fontWeight: 'bold'
 							}}
 						>
 							{familyMsg}
 						</p>
 					)}
 
+					{/* Входящие запросы */}
 					{familyData.incoming.length > 0 && (
-						<div
-							style={{
-								marginBottom: '20px',
-								background: '#fff',
-								padding: '16px',
-								borderRadius: '15px',
-								boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-							}}
-						>
+						<div className="family-request-card">
 							<h3
 								style={{
 									margin: '0 0 10px',
@@ -550,44 +544,22 @@ function MainScreen() {
 								Запросы в семью
 							</h3>
 							{familyData.incoming.map(req => (
-								<div
-									key={req.id}
-									style={{
-										display: 'flex',
-										justifyContent: 'space-between',
-										alignItems: 'center',
-										marginBottom: '10px'
-									}}
-								>
+								<div key={req.id}>
 									<span style={{ fontSize: '14px', color: '#4a607a' }}>
 										Пользователь ID: {req.requester_id}
 									</span>
-									<div style={{ display: 'flex', gap: '8px' }}>
+									<div className="request-buttons">
 										<button
+											className="btn-accept"
 											onClick={() => handleRespond(req.id, 'accepted')}
 											disabled={familyLoading}
-											style={{
-												background: '#0ba360',
-												color: '#fff',
-												border: 'none',
-												padding: '6px 12px',
-												borderRadius: '8px',
-												cursor: 'pointer'
-											}}
 										>
 											Принять
 										</button>
 										<button
+											className="btn-reject"
 											onClick={() => handleRespond(req.id, 'rejected')}
 											disabled={familyLoading}
-											style={{
-												background: '#c17575',
-												color: '#fff',
-												border: 'none',
-												padding: '6px 12px',
-												borderRadius: '8px',
-												cursor: 'pointer'
-											}}
 										>
 											Отклонить
 										</button>
@@ -597,6 +569,7 @@ function MainScreen() {
 						</div>
 					)}
 
+					{/* Исходящие запросы */}
 					{familyData.outgoing.length > 0 && (
 						<p
 							style={{
@@ -609,34 +582,27 @@ function MainScreen() {
 						</p>
 					)}
 
-					<div className="family-grid">
+					{/* Список членов семьи */}
+					<div className="family-list">
 						{familyData.members.length === 0 ? (
 							<p className="empty-note">Ты пока никого не добавил.</p>
 						) : (
 							familyData.members.map(member => (
 								<div
 									key={member.id}
-									className="family-member"
-									style={{ flexDirection: 'column', alignItems: 'stretch' }}
+									className="family-card"
 								>
-									<div
-										style={{
-											display: 'flex',
-											alignItems: 'center',
-											gap: '10px',
-											marginBottom: '8px'
-										}}
-									>
-										<div className="member-avatar">{member.first_name[0]}</div>
-										<div style={{ flex: 1 }}>
+									<div className="family-card-header">
+										<div className="family-avatar">{member.first_name[0]}</div>
+										<div className="family-info">
 											<strong>{member.first_name}</strong>
 											<p>
-												Выпито: {member.drank_today} / {member.water_goal_ml} мл
+												{member.drank_today} / {member.water_goal_ml} мл
 											</p>
 										</div>
 										<span
 											style={{
-												fontSize: '14px',
+												fontSize: '15px',
 												fontWeight: 'bold',
 												color: member.progress >= 100 ? '#0ba360' : '#1886ad'
 											}}
@@ -644,22 +610,13 @@ function MainScreen() {
 											{member.progress}%
 										</span>
 									</div>
-									<div
-										style={{
-											width: '100%',
-											height: '6px',
-											background: '#e2e8f0',
-											borderRadius: '3px',
-											overflow: 'hidden'
-										}}
-									>
+									<div className="family-progress-bar">
 										<div
+											className="family-progress-fill"
 											style={{
 												width: `${member.progress}%`,
-												height: '100%',
 												background:
-													member.progress >= 100 ? '#0ba360' : '#1886ad',
-												transition: 'width 0.3s'
+													member.progress >= 100 ? '#0ba360' : '#1886ad'
 											}}
 										/>
 									</div>
@@ -668,10 +625,10 @@ function MainScreen() {
 						)}
 					</div>
 
+					{/* Форма добавления */}
 					<form
 						onSubmit={handleAddFamily}
-						className="custom-form"
-						style={{ marginTop: '24px' }}
+						className="family-form"
 					>
 						<input
 							type="text"
@@ -680,18 +637,12 @@ function MainScreen() {
 							value={inputId}
 							onChange={e => setInputId(e.target.value.replace(/\D/g, ''))}
 							placeholder="Вставь Telegram ID"
-							style={{
-								color: '#173f70',
-								background: '#fff',
-								border: '1px solid #d4e1eb'
-							}}
 						/>
 						<button
 							type="submit"
 							disabled={familyLoading}
-							style={{ background: '#173f70', color: '#fff' }}
 						>
-							Добавить
+							{familyLoading ? '...' : 'Добавить'}
 						</button>
 					</form>
 				</section>

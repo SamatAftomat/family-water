@@ -1,8 +1,11 @@
 import { supabase } from './telegram'
 
+// ==========================================
+// БАЗОВЫЕ ФУНКЦИИ ПРОФИЛЯ И ВОДЫ
+// ==========================================
+
 export async function getUserProfile(userId) {
 	if (!supabase) return null
-	// Используем maybeSingle, чтобы не было ошибки, если юзера еще нет
 	const { data } = await supabase
 		.from('users')
 		.select('*')
@@ -32,7 +35,6 @@ export async function getTodayLogs(userId, dateStr) {
 	}))
 }
 
-// НОВАЯ ФУНКЦИЯ: Загрузка логов за 7 дней для графика
 export async function getLast7DaysTotal(userId) {
 	if (!supabase) return {}
 
@@ -45,10 +47,8 @@ export async function getLast7DaysTotal(userId) {
 		.eq('user_id', userId)
 		.gte('logged_at', sevenDaysAgo.toISOString())
 
-	// Группируем по датам
 	const totals = {}
 	;(data || []).forEach(log => {
-		// Берем только дату YYYY-MM-DD из timestamp
 		const date = new Date(log.logged_at).toISOString().slice(0, 10)
 		totals[date] = (totals[date] || 0) + log.amount_ml
 	})
@@ -76,11 +76,11 @@ export async function addWaterToDb(userId, amount, profile) {
 	if (rpcError) throw new Error(rpcError.message)
 }
 
-// НОВАЯ ФУНКЦИЯ: Удаление записи из базы
 export async function deleteLogFromDb(logId) {
 	if (!supabase) return
 	await supabase.from('water_logs').delete().eq('id', logId)
 }
+
 // ==========================================
 // ЛОГИКА СЕМЬИ
 // ==========================================
@@ -102,18 +102,22 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 				'Пользователь с таким ID не найден. Попроси его зайти в приложение!'
 		}
 
-	// Проверяем, нет ли уже связи или запроса
-	const { data: existing } = await supabase
+	// Проверяем, нет ли уже связи. Добавили .limit(1), чтобы не было ошибки при нескольких записях
+	const { data: existing, error: searchError } = await supabase
 		.from('family_links')
 		.select('status')
 		.or(
 			`and(requester_id.eq.${requesterId},receiver_id.eq.${receiverId}),and(requester_id.eq.${receiverId},receiver_id.eq.${requesterId})`
 		)
-		.maybeSingle()
+		.limit(1)
 
-	if (existing) {
-		if (existing.status === 'accepted') return { error: 'Вы уже в одной семье' }
-		if (existing.status === 'pending') return { error: 'Запрос уже отправлен' }
+	if (searchError) return { error: 'Ошибка базы: ' + searchError.message }
+
+	if (existing && existing.length > 0) {
+		if (existing[0].status === 'accepted')
+			return { error: 'Вы уже в одной семье' }
+		if (existing[0].status === 'pending')
+			return { error: 'Запрос уже отправлен' }
 	}
 
 	// Отправляем запрос
@@ -122,7 +126,7 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 		receiver_id: receiverId
 	})
 
-	if (error) return { error: error.message }
+	if (error) return { error: 'Ошибка БД: ' + error.message }
 	return { success: true }
 }
 
