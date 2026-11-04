@@ -90,7 +90,6 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 	if (requesterId === receiverId)
 		return { error: 'Нельзя добавить самого себя' }
 
-	// Проверяем, существует ли такой пользователь
 	const { data: target } = await supabase
 		.from('users')
 		.select('id')
@@ -102,7 +101,6 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 				'Пользователь с таким ID не найден. Попроси его зайти в приложение!'
 		}
 
-	// Проверяем, нет ли уже связи
 	const { data: existing, error: searchError } = await supabase
 		.from('family_links')
 		.select('status')
@@ -120,7 +118,6 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 			return { error: 'Запрос уже отправлен' }
 	}
 
-	// Отправляем запрос в базу
 	const { error } = await supabase.from('family_links').insert({
 		requester_id: requesterId,
 		receiver_id: receiverId
@@ -128,7 +125,6 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 
 	if (error) return { error: 'Ошибка БД: ' + error.message }
 
-	// Получаем имя отправителя для уведомления
 	const { data: sender } = await supabase
 		.from('users')
 		.select('first_name')
@@ -136,7 +132,6 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 		.single()
 	const senderName = sender?.first_name || 'Кто-то'
 
-	// Отправляем уведомление в Telegram (используем наш новый API)
 	fetch('https://family-water.vercel.app/api/notify', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -149,7 +144,6 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 export async function getFamilyData(userId, dateStr) {
 	if (!supabase) return { members: [], incoming: [], outgoing: [] }
 
-	// Получаем все связи, где участвует пользователь
 	const { data: links } = await supabase
 		.from('family_links')
 		.select('*')
@@ -165,27 +159,23 @@ export async function getFamilyData(userId, dateStr) {
 	)
 	const acceptedLinks = links.filter(l => l.status === 'accepted')
 
-	// Собираем ID всех принятых членов семьи
 	const memberIds = acceptedLinks.map(l =>
 		l.requester_id === userId ? l.receiver_id : l.requester_id
 	)
 
 	if (memberIds.length === 0) return { members: [], incoming, outgoing }
 
-	// Получаем профили членов семьи
 	const { data: profiles } = await supabase
 		.from('users')
 		.select('*')
 		.in('id', memberIds)
 
-	// Получаем их воду за сегодня
 	const { data: logs } = await supabase
 		.from('water_logs')
 		.select('user_id, amount_ml')
 		.in('user_id', memberIds)
 		.gte('logged_at', `${dateStr}T00:00:00Z`)
 
-	// Считаем прогресс каждого
 	const members = (profiles || []).map(p => {
 		const drank = (logs || [])
 			.filter(l => l.user_id === p.id)
@@ -203,4 +193,17 @@ export async function getFamilyData(userId, dateStr) {
 export async function respondToRequest(linkId, status) {
 	if (!supabase) return
 	await supabase.from('family_links').update({ status }).eq('id', linkId)
+}
+
+// НОВАЯ ФУНКЦИЯ: Отвязать члена семьи
+export async function removeFamilyLink(userId, memberId) {
+	if (!supabase) return
+
+	// Удаляем связь между двумя пользователями (в любую сторону)
+	await supabase
+		.from('family_links')
+		.delete()
+		.or(
+			`and(requester_id.eq.${userId},receiver_id.eq.${memberId}),and(requester_id.eq.${memberId},receiver_id.eq.${userId})`
+		)
 }

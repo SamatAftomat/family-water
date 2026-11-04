@@ -8,7 +8,8 @@ import {
 	getLast7DaysTotal,
 	sendFamilyRequest,
 	getFamilyData,
-	respondToRequest
+	respondToRequest,
+	removeFamilyLink
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -47,6 +48,7 @@ function MainScreen() {
 	const goal = Number(profile?.water_goal_ml || 2100)
 	const progress = Math.min(Math.round((total / goal) * 100), 100)
 
+	// Защита от сгорания стрика
 	const effectiveStreak = useMemo(() => {
 		if (!profile?.goal_reached_date) return 0
 		const yesterday = new Date()
@@ -61,13 +63,13 @@ function MainScreen() {
 		return 0
 	}, [profile, today])
 
-	// Загружаем данные семьи (вынесено отдельно, чтобы можно было обновлять)
+	// Функция загрузки данных семьи (вынесена для автообновления)
 	const loadFamily = async () => {
 		const fData = await getFamilyData(userId, today)
 		setFamilyData(fData)
 	}
 
-	// Главная загрузка при старте
+	// Первичная загрузка приложения
 	useEffect(() => {
 		async function loadData() {
 			try {
@@ -97,10 +99,10 @@ function MainScreen() {
 		loadData()
 	}, [userId, today])
 
-	// Автообновление семьи каждые 15 секунд
+	// АВТООБНОВЛЕНИЕ СЕМЬИ КАЖДЫЕ 15 СЕКУНД
 	useEffect(() => {
 		if (tab === 'family' && !isLoading) {
-			loadFamily() // Загружаем сразу при входе
+			loadFamily() // Загружаем сразу
 
 			const interval = setInterval(() => {
 				loadFamily() // И потом каждые 15 секунд
@@ -231,6 +233,15 @@ function MainScreen() {
 	async function handleRespond(linkId, status) {
 		setFamilyLoading(true)
 		await respondToRequest(linkId, status)
+		await loadFamily()
+		setFamilyLoading(false)
+	}
+
+	// Функция отвязки члена семьи
+	async function handleRemoveFamily(memberId) {
+		if (!window.confirm('Точно удалить этого человека из семьи?')) return
+		setFamilyLoading(true)
+		await removeFamilyLink(userId, memberId)
 		await loadFamily()
 		setFamilyLoading(false)
 	}
@@ -545,6 +556,7 @@ function MainScreen() {
 						</p>
 					)}
 
+					{/* Входящие запросы */}
 					{familyData.incoming.length > 0 && (
 						<div className="family-request-card">
 							<h3
@@ -588,6 +600,7 @@ function MainScreen() {
 						</div>
 					)}
 
+					{/* Исходящие запросы */}
 					{familyData.outgoing.length > 0 && (
 						<p
 							style={{
@@ -600,6 +613,7 @@ function MainScreen() {
 						</p>
 					)}
 
+					{/* Список членов семьи */}
 					<div className="family-list">
 						{familyData.members.length === 0 ? (
 							<p className="empty-note">Ты пока никого не добавил.</p>
@@ -627,6 +641,13 @@ function MainScreen() {
 										>
 											{member.progress}%
 										</span>
+										<button
+											className="btn-unlink"
+											onClick={() => handleRemoveFamily(member.id)}
+											title="Отвязать"
+										>
+											✕
+										</button>
 									</div>
 									<div className="family-progress-bar">
 										<div
@@ -643,6 +664,7 @@ function MainScreen() {
 						)}
 					</div>
 
+					{/* Форма добавления */}
 					<form
 						onSubmit={handleAddFamily}
 						className="family-form"
