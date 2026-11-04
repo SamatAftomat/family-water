@@ -1206,149 +1206,64 @@ body {
 .dark-theme .btn-unlink {
 	color: #f87171;
 }
+
 /* ==========================================
-   ОБНОВЛЕННЫЙ ГРАФИК (АНАЛИТИКА)
+   ОБНОВЛЕННЫЙ ГРАФИК (КАК В APPLE HEALTH)
    ========================================== */
 .chart {
 	display: flex;
 	flex-direction: column;
-	height: 230px;
-	padding: 18px 10px 10px;
+	height: 220px;
 	border-radius: 18px;
 	background: #fff;
 	margin-bottom: 16px;
+	padding-top: 30px; /* Место для цифры цели сверху */
+	overflow: hidden;
 }
 
 /* Область столбиков */
 .chart-bars-area {
+	flex: 1;
+	display: flex;
+	align-items: flex-end; /* Прижимаем к низу */
+	justify-content: space-between;
+	padding: 0 16px;
 	position: relative;
-	flex: 1;
-	display: flex;
-	align-items: flex-end;
-	justify-content: space-around;
-	width: 100%;
 }
 
-/* Сами столбики */
+/* Колонка (столбик) */
 .chart-column {
-	display: flex;
-	align-items: flex-end;
-	justify-content: center;
-	height: 100%;
-	width: 100%;
-	z-index: 2; /* Выше линии */
-}
-
-.bar {
-	width: 24px;
-	min-height: 8px;
-	border-radius: 8px 8px 3px 3px;
-	background: linear-gradient(#25b2c1, #2575c5);
-	transition: height 0.3s ease;
-}
-
-/* Линия цели */
-.goal-line {
-	position: absolute;
-	left: 0;
-	right: 0;
-	height: 0;
-	border-top: 1.5px dashed #1886ad;
-	z-index: 1;
-}
-
-/* Текст цели на линии */
-.goal-text {
-	position: absolute;
-	right: 4px;
-	top: -16px;
-	font-size: 10px;
-	font-weight: 700;
-	color: #1886ad;
-	background: #fff;
-	padding: 0 4px;
-	border-radius: 4px;
-}
-
-/* Подписи дней недели снизу */
-.chart-labels {
-	display: flex;
-	justify-content: space-around;
-	width: 100%;
-	margin-top: 8px;
-}
-
-.chart-labels small {
-	color: #71869d;
-	font-size: 11px;
-	text-align: center;
-	flex: 1;
-}
-
-/* Темная тема для графика */
-.dark-theme .chart {
-	background: #1e293b;
-}
-.dark-theme .goal-text {
-	background: #1e293b;
-}
-/* ==========================================
-   ОБНОВЛЕННЫЙ ГРАФИК (АНАЛИТИКА)
-   ========================================== */
-.chart {
-	display: flex;
-	flex-direction: column;
-	height: 230px;
-	padding: 24px 10px 10px; /* Увеличили отступ сверху для текста цели */
-	border-radius: 18px;
-	background: #fff;
-	margin-bottom: 16px;
-}
-
-/* Область столбиков */
-.chart-bars-area {
-	position: relative;
 	flex: 1;
 	display: flex;
-	align-items: flex-end;
-	justify-content: space-between; /* Распределяем столбики равномерно */
-	gap: 6px; /* Убрали огромную пустоту между столбиками */
-	width: 100%;
-}
-
-/* Сами столбики */
-.chart-column {
-	flex: 1; /* Каждый столбик занимает равную долю */
-	display: flex;
-	align-items: flex-end;
 	justify-content: center;
+	align-items: flex-end;
 	height: 100%;
 	z-index: 2;
 }
 
+/* Сам столбик */
 .bar {
-	width: 100%; /* Занимает всю ширину колонки */
-	max-width: 32px; /* Но не шире 32px */
-	min-height: 4px;
-	border-radius: 8px 8px 3px 3px;
+	width: 100%;
+	max-width: 28px; /* Аккуратная ширина */
+	border-radius: 6px 6px 2px 2px;
 	transition: height 0.3s ease;
 }
 
 /* Линия цели */
 .goal-line {
 	position: absolute;
-	top: 0; /* Привязана к самому верху */
-	left: 0;
-	right: 0;
+	top: 0;
+	left: 16px;
+	right: 16px;
 	border-top: 2px dashed #1886ad;
 	z-index: 1;
 }
 
-/* Текст цели на линии */
+/* Текст цели (висит над линией) */
 .goal-text {
 	position: absolute;
 	right: 0;
-	top: -18px; /* Текст висит чуть выше линии */
+	top: -20px;
 	font-size: 11px;
 	font-weight: 700;
 	color: #1886ad;
@@ -1357,23 +1272,21 @@ body {
 	border-radius: 4px;
 }
 
-/* Подписи дней недели снизу */
+/* Подписи дней недели (строго под столбиками) */
 .chart-labels {
 	display: flex;
 	justify-content: space-between;
-	width: 100%;
-	margin-top: 12px;
-	gap: 6px;
+	padding: 8px 16px 12px 16px;
 }
 
 .chart-labels small {
-	color: #71869d;
-	font-size: 11px;
-	text-align: center;
 	flex: 1;
+	text-align: center;
+	font-size: 11px;
+	color: #71869d;
 }
 
-/* Темная тема для графика */
+/* Темная тема */
 .dark-theme .chart {
 	background: #1e293b;
 }

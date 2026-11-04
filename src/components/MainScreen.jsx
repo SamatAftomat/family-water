@@ -296,7 +296,6 @@ function MainScreen() {
 		[logs, today, total, chartTotals]
 	)
 
-	// Вычисления для графика
 	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
 	const weekAverage = Math.round(weekTotal / 7)
 
@@ -539,12 +538,10 @@ function MainScreen() {
 
 						<div className="chart">
 							<div className="chart-bars-area">
-								{/* Линия цели всегда на самом верху */}
 								<div className="goal-line">
 									<span className="goal-text">{goal}</span>
 								</div>
 
-								{/* Столбики */}
 								{weekData.map(day => (
 									<div
 										className="chart-column"
@@ -553,7 +550,7 @@ function MainScreen() {
 										<div
 											className="bar"
 											style={{
-												height: `${Math.min((day.total / goal) * 100, 100)}%`,
+												height: `${Math.min((day.total / goal) * 100, 96)}%`,
 												background:
 													day.total >= goal
 														? 'linear-gradient(#0ba360, #3cba92)'
