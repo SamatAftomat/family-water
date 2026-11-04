@@ -796,8 +796,15 @@ button {
 	font-family: inherit;
 }
 /* =========================================
-   ИНТЕРФЕЙС СЕМЬИ
+   ИНТЕРФЕЙС СЕМЬИ И ФИКСЫ ЭКРАНА
    ========================================= */
+
+/* Фикс зума на телефоне */
+.water-app {
+	overflow-x: hidden !important;
+}
+
+/* Карточки семьи */
 .family-list {
 	display: flex;
 	flex-direction: column;
@@ -842,7 +849,7 @@ button {
 
 .family-info {
 	flex: 1;
-	min-width: 0;
+	min-width: 0; /* Важно для переноса длинного текста */
 }
 
 .family-info strong {
@@ -850,9 +857,7 @@ button {
 	color: #173f70;
 	font-size: 16px;
 	margin-bottom: 4px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	word-break: break-word; /* Перенос длинных имен */
 }
 
 .dark-theme .family-info strong {
@@ -883,6 +888,7 @@ button {
 	transition: width 0.3s ease;
 }
 
+/* Форма добавления */
 .family-form {
 	display: flex;
 	gap: 8px;
@@ -898,7 +904,7 @@ button {
 	border-radius: 14px;
 	padding: 0 16px;
 	color: #173f70;
-	font-size: 16px;
+	font-size: 16px !important; /* Обязательно 16px, чтобы iPhone не зумил экран */
 	font-weight: 600;
 }
 
@@ -919,6 +925,7 @@ button {
 	transform: scale(0.95);
 }
 
+/* Блок с входящими запросами */
 .family-request-card {
 	background: #fff;
 	border-radius: 16px;
@@ -929,6 +936,10 @@ button {
 
 .dark-theme .family-request-card {
 	background: #1e293b;
+}
+
+.dark-theme .family-request-card h3 {
+	color: #f8fafc !important;
 }
 
 .request-buttons {

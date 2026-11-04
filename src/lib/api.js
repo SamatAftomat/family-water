@@ -102,7 +102,7 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 				'Пользователь с таким ID не найден. Попроси его зайти в приложение!'
 		}
 
-	// Проверяем, нет ли уже связи. Добавили .limit(1), чтобы не было ошибки при нескольких записях
+	// Проверяем, нет ли уже связи
 	const { data: existing, error: searchError } = await supabase
 		.from('family_links')
 		.select('status')
@@ -120,13 +120,29 @@ export async function sendFamilyRequest(requesterId, receiverId) {
 			return { error: 'Запрос уже отправлен' }
 	}
 
-	// Отправляем запрос
+	// Отправляем запрос в базу
 	const { error } = await supabase.from('family_links').insert({
 		requester_id: requesterId,
 		receiver_id: receiverId
 	})
 
 	if (error) return { error: 'Ошибка БД: ' + error.message }
+
+	// Получаем имя отправителя для уведомления
+	const { data: sender } = await supabase
+		.from('users')
+		.select('first_name')
+		.eq('id', requesterId)
+		.single()
+	const senderName = sender?.first_name || 'Кто-то'
+
+	// Отправляем уведомление в Telegram (используем наш новый API)
+	fetch('https://family-water.vercel.app/api/notify', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ receiverId, senderName })
+	}).catch(console.error)
+
 	return { success: true }
 }
 

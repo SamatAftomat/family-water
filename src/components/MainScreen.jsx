@@ -61,6 +61,13 @@ function MainScreen() {
 		return 0
 	}, [profile, today])
 
+	// Загружаем данные семьи (вынесено отдельно, чтобы можно было обновлять)
+	const loadFamily = async () => {
+		const fData = await getFamilyData(userId, today)
+		setFamilyData(fData)
+	}
+
+	// Главная загрузка при старте
 	useEffect(() => {
 		async function loadData() {
 			try {
@@ -80,10 +87,7 @@ function MainScreen() {
 
 				setLogs(dbLogs)
 				setChartTotals(totals7Days)
-
-				// Загружаем семью
-				const fData = await getFamilyData(userId, today)
-				setFamilyData(fData)
+				await loadFamily()
 			} catch (err) {
 				console.error('Ошибка загрузки:', err)
 			} finally {
@@ -92,6 +96,19 @@ function MainScreen() {
 		}
 		loadData()
 	}, [userId, today])
+
+	// Автообновление семьи каждые 15 секунд
+	useEffect(() => {
+		if (tab === 'family' && !isLoading) {
+			loadFamily() // Загружаем сразу при входе
+
+			const interval = setInterval(() => {
+				loadFamily() // И потом каждые 15 секунд
+			}, 15000)
+
+			return () => clearInterval(interval) // Очищаем таймер при уходе с вкладки
+		}
+	}, [tab, isLoading])
 
 	useEffect(() => {
 		localStorage.setItem('family-water-theme', isDark ? 'dark' : 'light')
@@ -194,7 +211,6 @@ function MainScreen() {
 		}
 	}
 
-	// Обработка добавления члена семьи
 	async function handleAddFamily(e) {
 		e.preventDefault()
 		if (!inputId.trim()) return
@@ -207,18 +223,15 @@ function MainScreen() {
 		else {
 			setFamilyMsg('✅ Запрос отправлен!')
 			setInputId('')
-			const fData = await getFamilyData(userId, today)
-			setFamilyData(fData)
+			await loadFamily()
 		}
 		setFamilyLoading(false)
 	}
 
-	// Обработка принятия/отклонения
 	async function handleRespond(linkId, status) {
 		setFamilyLoading(true)
 		await respondToRequest(linkId, status)
-		const fData = await getFamilyData(userId, today)
-		setFamilyData(fData)
+		await loadFamily()
 		setFamilyLoading(false)
 	}
 
@@ -524,14 +537,14 @@ function MainScreen() {
 								color: familyMsg.includes('❌') ? '#c17575' : '#0ba360',
 								fontSize: '14px',
 								marginBottom: '16px',
-								fontWeight: 'bold'
+								fontWeight: 'bold',
+								wordBreak: 'break-word'
 							}}
 						>
 							{familyMsg}
 						</p>
 					)}
 
-					{/* Входящие запросы */}
 					{familyData.incoming.length > 0 && (
 						<div className="family-request-card">
 							<h3
@@ -545,7 +558,13 @@ function MainScreen() {
 							</h3>
 							{familyData.incoming.map(req => (
 								<div key={req.id}>
-									<span style={{ fontSize: '14px', color: '#4a607a' }}>
+									<span
+										style={{
+											fontSize: '14px',
+											color: '#4a607a',
+											wordBreak: 'break-word'
+										}}
+									>
 										Пользователь ID: {req.requester_id}
 									</span>
 									<div className="request-buttons">
@@ -569,7 +588,6 @@ function MainScreen() {
 						</div>
 					)}
 
-					{/* Исходящие запросы */}
 					{familyData.outgoing.length > 0 && (
 						<p
 							style={{
@@ -582,7 +600,6 @@ function MainScreen() {
 						</p>
 					)}
 
-					{/* Список членов семьи */}
 					<div className="family-list">
 						{familyData.members.length === 0 ? (
 							<p className="empty-note">Ты пока никого не добавил.</p>
@@ -604,7 +621,8 @@ function MainScreen() {
 											style={{
 												fontSize: '15px',
 												fontWeight: 'bold',
-												color: member.progress >= 100 ? '#0ba360' : '#1886ad'
+												color: member.progress >= 100 ? '#0ba360' : '#1886ad',
+												flexShrink: 0
 											}}
 										>
 											{member.progress}%
@@ -625,7 +643,6 @@ function MainScreen() {
 						)}
 					</div>
 
-					{/* Форма добавления */}
 					<form
 						onSubmit={handleAddFamily}
 						className="family-form"
