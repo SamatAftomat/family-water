@@ -796,45 +796,76 @@ button {
 	font-family: inherit;
 }
 /* ==========================================
-   ФИКС ЗУМА И СЕМЬИ НА ANDROID
+   1. ГЛОБАЛЬНЫЙ ФИКС ЗУМА (ANDROID/IOS)
    ========================================== */
-
-/* Глобальный фикс зума */
 html,
 body {
-	overflow-x: hidden;
+	overflow-x: hidden !important;
 	width: 100%;
 	max-width: 100vw;
 	position: relative;
-	-webkit-text-size-adjust: 100%; /* Запрет автоподстройки текста */
+	-webkit-text-size-adjust: 100% !important; /* Запрет автоподстройки текста */
+	touch-action: pan-y; /* Разрешаем только вертикальный скролл */
 }
 
 .water-app {
 	width: 100%;
 	max-width: 100vw;
-	overflow-x: hidden;
+	overflow-x: hidden !important;
 	box-sizing: border-box;
 }
 
-/* Фикс семьи — карточка не должна вылезать */
+/* Контейнер для свайпов */
+.swipe-container {
+	width: 100%;
+	box-sizing: border-box;
+}
+
+/* ==========================================
+   2. СТРАНИЦА "СЕМЬЯ" (ПОЛНЫЙ ФИКС ВЕРСТКИ)
+   ========================================== */
+
+/* Карточка члена семьи */
 .family-card {
 	width: 100%;
 	max-width: 100%;
 	box-sizing: border-box;
-	overflow: hidden;
+	overflow: hidden !important; /* Ничего не вылезет за края */
+	background: #fff;
+	border-radius: 16px;
+	padding: 16px;
+	margin-bottom: 12px;
+	box-shadow: 0 4px 12px rgba(25, 64, 97, 0.06);
 }
 
+/* Шапка карточки */
 .family-card-header {
 	display: flex;
 	align-items: center;
 	gap: 10px;
 	width: 100%;
-	min-width: 0;
+	min-width: 0; /* Важно для flex-контейнера */
 }
 
+/* Аватарка */
+.family-avatar {
+	width: 44px;
+	height: 44px;
+	border-radius: 12px;
+	background: #5a80d8;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 18px;
+	font-weight: 800;
+	flex-shrink: 0;
+}
+
+/* Блок с текстом */
 .family-info {
 	flex: 1;
-	min-width: 0;
+	min-width: 0; /* Обязательно, чтобы текст сжимался и переносился */
 	overflow: hidden;
 }
 
@@ -842,10 +873,9 @@ body {
 	display: block;
 	font-size: 16px;
 	margin-bottom: 4px;
-	word-wrap: break-word;
-	overflow-wrap: break-word;
 	color: #173f70;
-	white-space: normal; /* Отменяем nowrap, чтобы текст переносился */
+	word-break: break-word; /* Разрешаем перенос длинных имен */
+	white-space: normal;
 }
 
 .family-info p {
@@ -855,28 +885,110 @@ body {
 	white-space: normal;
 }
 
-/* Форма добавления — не дает зуму */
+/* Проценты */
+.family-progress-text {
+	font-size: 15px;
+	font-weight: bold;
+	flex-shrink: 0;
+	margin-left: 4px;
+}
+
+/* Полоса прогресса */
+.family-progress-bar {
+	width: 100%;
+	height: 8px;
+	background: #e2e8f0;
+	border-radius: 4px;
+	overflow: hidden;
+	margin-top: 10px;
+}
+
+.family-progress-fill {
+	height: 100%;
+	border-radius: 4px;
+	transition: width 0.3s ease;
+}
+
+/* Кнопка отвязки (крестик) */
+.btn-unlink {
+	flex-shrink: 0;
+	background: transparent;
+	border: none;
+	color: #c17575;
+	font-size: 18px;
+	font-weight: bold;
+	cursor: pointer;
+	padding: 8px;
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+}
+
+.btn-unlink:active {
+	background: rgba(193, 117, 117, 0.2);
+}
+
+/* ==========================================
+   3. ФОРМА ДОБАВЛЕНИЯ (ФИКС ЗУМА НА ANDROID)
+   ========================================== */
+
 .family-form {
 	display: flex;
 	gap: 8px;
+	margin-top: 20px;
 	width: 100%;
-	max-width: 100%;
 	box-sizing: border-box;
 }
 
+/* ЗДЕСЬ ГЛАВНЫЙ СЕКРЕТ: font-size: 16px !important; */
 .family-form input {
 	flex: 1;
 	min-width: 0;
 	height: 48px;
-	font-size: 16px !important;
-	padding: 0 14px;
+	border: 1px solid #d4e1eb;
 	border-radius: 14px;
+	padding: 0 14px;
+	color: #173f70;
+	font-size: 16px !important; /* ОБЯЗАТЕЛЬНО 16px, иначе Android зумит экран */
+	font-weight: 600;
 	box-sizing: border-box;
 }
 
 .family-form button {
 	flex-shrink: 0;
 	height: 48px;
+	border: none;
+	border-radius: 14px;
 	padding: 0 16px;
+	background: #173f70;
+	color: #fff;
+	font-weight: 700;
+	font-size: 15px;
+	cursor: pointer;
 	box-sizing: border-box;
+}
+
+.family-form button:active {
+	transform: scale(0.95);
+}
+
+/* ==========================================
+   4. ТЕМНАЯ ТЕМА ДЛЯ СЕМЬИ
+   ========================================== */
+.dark-theme .family-card {
+	background: #1e293b;
+}
+.dark-theme .family-info strong {
+	color: #f8fafc;
+}
+.dark-theme .family-info p {
+	color: #94a3b8;
+}
+.dark-theme .family-progress-bar {
+	background: #334155;
+}
+.dark-theme .btn-unlink {
+	color: #f87171;
 }
