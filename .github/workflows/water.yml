@@ -1,0 +1,19 @@
+name: Water Bot Scheduler
+on:
+  schedule:
+    # Время указано в UTC!
+    # 05:00 UTC = 08:00 по Москве
+    - cron: '0 5 * * *'
+    # 10:00 UTC = 13:00 по Москве
+    - cron: '0 10 * * *'
+    # 17:00 UTC = 20:00 по Москве
+    - cron: '0 17 * * *'
+  workflow_dispatch: # Эта строчка добавляет кнопку для ручного запуска
+
+jobs:
+  ping-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Vercel
+        run: |
+          curl -s "https://family-water.vercel.app/api/cron?key=water_secret_2024"
