@@ -1292,3 +1292,91 @@ body {
 .dark-theme .goal-text {
 	background: #1e293b;
 }
+/* ==========================================
+   ОБНОВЛЕННЫЙ ГРАФИК (АНАЛИТИКА)
+   ========================================== */
+.chart {
+	display: flex;
+	flex-direction: column;
+	height: 230px;
+	padding: 24px 10px 10px; /* Увеличили отступ сверху для текста цели */
+	border-radius: 18px;
+	background: #fff;
+	margin-bottom: 16px;
+}
+
+/* Область столбиков */
+.chart-bars-area {
+	position: relative;
+	flex: 1;
+	display: flex;
+	align-items: flex-end;
+	justify-content: space-between; /* Распределяем столбики равномерно */
+	gap: 6px; /* Убрали огромную пустоту между столбиками */
+	width: 100%;
+}
+
+/* Сами столбики */
+.chart-column {
+	flex: 1; /* Каждый столбик занимает равную долю */
+	display: flex;
+	align-items: flex-end;
+	justify-content: center;
+	height: 100%;
+	z-index: 2;
+}
+
+.bar {
+	width: 100%; /* Занимает всю ширину колонки */
+	max-width: 32px; /* Но не шире 32px */
+	min-height: 4px;
+	border-radius: 8px 8px 3px 3px;
+	transition: height 0.3s ease;
+}
+
+/* Линия цели */
+.goal-line {
+	position: absolute;
+	top: 0; /* Привязана к самому верху */
+	left: 0;
+	right: 0;
+	border-top: 2px dashed #1886ad;
+	z-index: 1;
+}
+
+/* Текст цели на линии */
+.goal-text {
+	position: absolute;
+	right: 0;
+	top: -18px; /* Текст висит чуть выше линии */
+	font-size: 11px;
+	font-weight: 700;
+	color: #1886ad;
+	background: #fff;
+	padding: 0 4px;
+	border-radius: 4px;
+}
+
+/* Подписи дней недели снизу */
+.chart-labels {
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+	margin-top: 12px;
+	gap: 6px;
+}
+
+.chart-labels small {
+	color: #71869d;
+	font-size: 11px;
+	text-align: center;
+	flex: 1;
+}
+
+/* Темная тема для графика */
+.dark-theme .chart {
+	background: #1e293b;
+}
+.dark-theme .goal-text {
+	background: #1e293b;
+}

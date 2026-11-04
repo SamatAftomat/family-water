@@ -299,8 +299,6 @@ function MainScreen() {
 	// Вычисления для графика
 	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
 	const weekAverage = Math.round(weekTotal / 7)
-	// Максимальный масштаб графика (чтобы столбики не улетали за край)
-	const maxScale = Math.max(goal * 1.2, ...weekData.map(d => d.total), 1)
 
 	if (isLoading) {
 		return (
@@ -541,13 +539,11 @@ function MainScreen() {
 
 						<div className="chart">
 							<div className="chart-bars-area">
-								{/* Линия цели */}
-								<div
-									className="goal-line"
-									style={{ bottom: `${(goal / maxScale) * 100}%` }}
-								>
+								{/* Линия цели всегда на самом верху */}
+								<div className="goal-line">
 									<span className="goal-text">{goal}</span>
 								</div>
+
 								{/* Столбики */}
 								{weekData.map(day => (
 									<div
@@ -557,7 +553,11 @@ function MainScreen() {
 										<div
 											className="bar"
 											style={{
-												height: `${Math.min((day.total / maxScale) * 100, 100)}%`
+												height: `${Math.min((day.total / goal) * 100, 100)}%`,
+												background:
+													day.total >= goal
+														? 'linear-gradient(#0ba360, #3cba92)'
+														: 'linear-gradient(#25b2c1, #2575c5)'
 											}}
 											title={`${day.total} мл`}
 										/>
