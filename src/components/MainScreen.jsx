@@ -5,7 +5,10 @@ import {
 	getTodayLogs,
 	addWaterToDb,
 	deleteLogFromDb,
-	getLast7DaysTotal
+	getLast7DaysTotal,
+	sendFamilyRequest,
+	getFamilyData,
+	respondToRequest
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -29,27 +32,32 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
+	// Стейты для семьи
+	const [familyData, setFamilyData] = useState({
+		members: [],
+		incoming: [],
+		outgoing: []
+	})
+	const [inputId, setInputId] = useState('')
+	const [familyMsg, setFamilyMsg] = useState('')
+	const [familyLoading, setFamilyLoading] = useState(false)
+
 	const today = todayKey()
 	const total = logs.reduce((sum, log) => sum + log.amount, 0)
 	const goal = Number(profile?.water_goal_ml || 2100)
 	const progress = Math.min(Math.round((total / goal) * 100), 100)
 
-	// ЛОГИКА СГОРАНИЯ СТРИКА
 	const effectiveStreak = useMemo(() => {
 		if (!profile?.goal_reached_date) return 0
-
 		const yesterday = new Date()
 		yesterday.setDate(yesterday.getDate() - 1)
 		const yesterdayStr = yesterday.toISOString().slice(0, 10)
-
-		// Если норма выполнена сегодня или вчера — стрик живой
 		if (
 			profile.goal_reached_date === today ||
 			profile.goal_reached_date === yesterdayStr
 		) {
 			return profile.streak_days || 0
 		}
-		// Иначе сгорел
 		return 0
 	}, [profile, today])
 
@@ -72,15 +80,12 @@ function MainScreen() {
 
 				setLogs(dbLogs)
 				setChartTotals(totals7Days)
+
+				// Загружаем семью
+				const fData = await getFamilyData(userId, today)
+				setFamilyData(fData)
 			} catch (err) {
 				console.error('Ошибка загрузки:', err)
-				setProfile(
-					JSON.parse(localStorage.getItem('family-water-profile')) || {
-						first_name: 'Пользователь',
-						weight_kg: 70,
-						water_goal_ml: 2100
-					}
-				)
 			} finally {
 				setIsLoading(false)
 			}
@@ -103,7 +108,6 @@ function MainScreen() {
 		setIsAdding(true)
 		try {
 			await addWaterToDb(userId, value, profile)
-
 			const updatedProfile = await getUserProfile(userId)
 			const updatedLogs = await getTodayLogs(userId, today)
 			const totals7Days = await getLast7DaysTotal(userId)
@@ -111,7 +115,6 @@ function MainScreen() {
 			setProfile(updatedProfile)
 			setLogs(updatedLogs)
 			setChartTotals(totals7Days)
-
 			localStorage.setItem(
 				'family-water-profile',
 				JSON.stringify(updatedProfile)
@@ -137,7 +140,6 @@ function MainScreen() {
 		if (!window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?'))
 			return
 		if (!supabase) return
-
 		await supabase
 			.from('water_logs')
 			.delete()
@@ -190,6 +192,34 @@ function MainScreen() {
 				?.writeText(text)
 				.then(() => alert(`ID скопирован: ${userId}`))
 		}
+	}
+
+	// Обработка добавления члена семьи
+	async function handleAddFamily(e) {
+		e.preventDefault()
+		if (!inputId.trim()) return
+		setFamilyLoading(true)
+		setFamilyMsg('')
+
+		const res = await sendFamilyRequest(userId, Number(inputId))
+
+		if (res.error) setFamilyMsg(`❌ ${res.error}`)
+		else {
+			setFamilyMsg('✅ Запрос отправлен!')
+			setInputId('')
+			const fData = await getFamilyData(userId, today)
+			setFamilyData(fData)
+		}
+		setFamilyLoading(false)
+	}
+
+	// Обработка принятия/отклонения
+	async function handleRespond(linkId, status) {
+		setFamilyLoading(true)
+		await respondToRequest(linkId, status)
+		const fData = await getFamilyData(userId, today)
+		setFamilyData(fData)
+		setFamilyLoading(false)
 	}
 
 	const weekData = useMemo(
@@ -304,7 +334,6 @@ function MainScreen() {
 								<small>из {goal} мл</small>
 							</div>
 						</div>
-
 						<div className="progress-copy">
 							<span>Выпито сегодня</span>
 							<strong>{total} мл</strong>
@@ -314,7 +343,6 @@ function MainScreen() {
 									: 'Норма выполнена!'}
 							</small>
 						</div>
-
 						<div className="water-actions">
 							<button
 								className="water-button water-button-blue"
@@ -338,14 +366,12 @@ function MainScreen() {
 								+300
 							</button>
 						</div>
-
 						<button
 							className="custom-water"
 							onClick={() => setShowCustom(value => !value)}
 						>
 							{showCustom ? '✕ Скрыть' : '＋ Другое количество'}
 						</button>
-
 						{showCustom && (
 							<div className="custom-form">
 								<input
@@ -481,43 +507,193 @@ function MainScreen() {
 					<p className="eyebrow">ВМЕСТЕ ЛЕГЧЕ</p>
 					<div className="section-heading">
 						<h2>Моя семья</h2>
-						<span
-							className="family-count"
-							style={{
-								display: 'grid',
-								placeItems: 'center',
-								width: 30,
-								height: 30,
-								borderRadius: '50%',
-								color: '#fff',
-								background: '#1886ad',
-								fontWeight: 800
-							}}
-						>
-							0
-						</span>
+						<span className="family-count">{familyData.members.length}</span>
 					</div>
-					<p
-						className="family-empty"
-						style={{
-							margin: '12px 0 0',
-							padding: 16,
-							border: '1px dashed #a9c7db',
-							borderRadius: 15,
-							color: '#637891',
-							background: '#fff',
-							fontSize: 14
-						}}
-					>
-						Добавление членов семьи по Telegram ID будет доступно после
-						подключения Mini App. Здесь появятся их имена и прогресс.
-					</p>
+
 					<button
 						className="primary-action"
 						onClick={shareId}
+						style={{ marginBottom: '16px', marginTop: '8px' }}
 					>
 						↗ Поделиться моим ID
 					</button>
+
+					{familyMsg && (
+						<p
+							style={{
+								color: familyMsg.includes('❌') ? '#c17575' : '#0ba360',
+								fontSize: '14px',
+								marginBottom: '12px'
+							}}
+						>
+							{familyMsg}
+						</p>
+					)}
+
+					{familyData.incoming.length > 0 && (
+						<div
+							style={{
+								marginBottom: '20px',
+								background: '#fff',
+								padding: '16px',
+								borderRadius: '15px',
+								boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+							}}
+						>
+							<h3
+								style={{
+									margin: '0 0 10px',
+									fontSize: '16px',
+									color: '#173f70'
+								}}
+							>
+								Запросы в семью
+							</h3>
+							{familyData.incoming.map(req => (
+								<div
+									key={req.id}
+									style={{
+										display: 'flex',
+										justifyContent: 'space-between',
+										alignItems: 'center',
+										marginBottom: '10px'
+									}}
+								>
+									<span style={{ fontSize: '14px', color: '#4a607a' }}>
+										Пользователь ID: {req.requester_id}
+									</span>
+									<div style={{ display: 'flex', gap: '8px' }}>
+										<button
+											onClick={() => handleRespond(req.id, 'accepted')}
+											disabled={familyLoading}
+											style={{
+												background: '#0ba360',
+												color: '#fff',
+												border: 'none',
+												padding: '6px 12px',
+												borderRadius: '8px',
+												cursor: 'pointer'
+											}}
+										>
+											Принять
+										</button>
+										<button
+											onClick={() => handleRespond(req.id, 'rejected')}
+											disabled={familyLoading}
+											style={{
+												background: '#c17575',
+												color: '#fff',
+												border: 'none',
+												padding: '6px 12px',
+												borderRadius: '8px',
+												cursor: 'pointer'
+											}}
+										>
+											Отклонить
+										</button>
+									</div>
+								</div>
+							))}
+						</div>
+					)}
+
+					{familyData.outgoing.length > 0 && (
+						<p
+							style={{
+								fontSize: '13px',
+								color: '#71869d',
+								marginBottom: '16px'
+							}}
+						>
+							Отправлено запросов: {familyData.outgoing.length} (ждем ответа)
+						</p>
+					)}
+
+					<div className="family-grid">
+						{familyData.members.length === 0 ? (
+							<p className="empty-note">Ты пока никого не добавил.</p>
+						) : (
+							familyData.members.map(member => (
+								<div
+									key={member.id}
+									className="family-member"
+									style={{ flexDirection: 'column', alignItems: 'stretch' }}
+								>
+									<div
+										style={{
+											display: 'flex',
+											alignItems: 'center',
+											gap: '10px',
+											marginBottom: '8px'
+										}}
+									>
+										<div className="member-avatar">{member.first_name[0]}</div>
+										<div style={{ flex: 1 }}>
+											<strong>{member.first_name}</strong>
+											<p>
+												Выпито: {member.drank_today} / {member.water_goal_ml} мл
+											</p>
+										</div>
+										<span
+											style={{
+												fontSize: '14px',
+												fontWeight: 'bold',
+												color: member.progress >= 100 ? '#0ba360' : '#1886ad'
+											}}
+										>
+											{member.progress}%
+										</span>
+									</div>
+									<div
+										style={{
+											width: '100%',
+											height: '6px',
+											background: '#e2e8f0',
+											borderRadius: '3px',
+											overflow: 'hidden'
+										}}
+									>
+										<div
+											style={{
+												width: `${member.progress}%`,
+												height: '100%',
+												background:
+													member.progress >= 100 ? '#0ba360' : '#1886ad',
+												transition: 'width 0.3s'
+											}}
+										/>
+									</div>
+								</div>
+							))
+						)}
+					</div>
+
+					<form
+						onSubmit={handleAddFamily}
+						className="custom-form"
+						style={{ marginTop: '24px' }}
+					>
+						<input
+							type="text"
+							inputMode="numeric"
+							pattern="[0-9]*"
+							value={inputId}
+							onChange={e => setInputId(e.target.value.replace(/\D/g, ''))}
+							placeholder="Вставь Telegram ID"
+							style={{
+								color: '#173f70',
+								background: '#fff',
+								border: '1px solid #d4e1eb'
+							}}
+						/>
+						<button
+							type="submit"
+							disabled={familyLoading}
+							style={{ background: '#173f70', color: '#fff' }}
+						>
+							Добавить
+						</button>
+					</form>
 				</section>
 			)}
 
@@ -628,7 +804,6 @@ function MainScreen() {
 						>
 							×
 						</button>
-
 						{activeInfo === 'diamonds' && (
 							<>
 								<h2 style={{ color: '#c49b00' }}>✦ Алмазы</h2>
@@ -644,7 +819,6 @@ function MainScreen() {
 								</p>
 							</>
 						)}
-
 						{activeInfo === 'streak' && (
 							<>
 								<h2 style={{ color: '#e65c00' }}>🔥 Дни подряд (Streak)</h2>
@@ -654,13 +828,11 @@ function MainScreen() {
 								</p>
 								<p>
 									<strong>Зачем это нужно:</strong> чем длиннее твоя серия, тем
-									больше бонусных алмазов ты получаешь (например, +3 алмаза за 7
-									дней подряд). Но если пропустишь день — серия сгорит и
-									начнется заново!
+									больше бонусных алмазов ты получаешь. Но если пропустишь день
+									— серия сгорит и начнется заново!
 								</p>
 							</>
 						)}
-
 						{activeInfo === 'progress' && (
 							<>
 								<h2 style={{ color: '#1886ad' }}>◉ Прогресс дня</h2>
@@ -672,7 +844,6 @@ function MainScreen() {
 									<strong>Твой расчет:</strong> Твоя норма — {goal} мл. Выпито
 									сегодня: {total} мл.
 								</p>
-								<p>Не забывай пить воду равномерно в течение дня!</p>
 							</>
 						)}
 					</div>

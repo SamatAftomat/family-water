@@ -81,3 +81,106 @@ export async function deleteLogFromDb(logId) {
 	if (!supabase) return
 	await supabase.from('water_logs').delete().eq('id', logId)
 }
+// ==========================================
+// ЛОГИКА СЕМЬИ
+// ==========================================
+
+export async function sendFamilyRequest(requesterId, receiverId) {
+	if (!supabase) return { error: 'Нет связи с базой' }
+	if (requesterId === receiverId)
+		return { error: 'Нельзя добавить самого себя' }
+
+	// Проверяем, существует ли такой пользователь
+	const { data: target } = await supabase
+		.from('users')
+		.select('id')
+		.eq('id', receiverId)
+		.maybeSingle()
+	if (!target)
+		return {
+			error:
+				'Пользователь с таким ID не найден. Попроси его зайти в приложение!'
+		}
+
+	// Проверяем, нет ли уже связи или запроса
+	const { data: existing } = await supabase
+		.from('family_links')
+		.select('status')
+		.or(
+			`and(requester_id.eq.${requesterId},receiver_id.eq.${receiverId}),and(requester_id.eq.${receiverId},receiver_id.eq.${requesterId})`
+		)
+		.maybeSingle()
+
+	if (existing) {
+		if (existing.status === 'accepted') return { error: 'Вы уже в одной семье' }
+		if (existing.status === 'pending') return { error: 'Запрос уже отправлен' }
+	}
+
+	// Отправляем запрос
+	const { error } = await supabase.from('family_links').insert({
+		requester_id: requesterId,
+		receiver_id: receiverId
+	})
+
+	if (error) return { error: error.message }
+	return { success: true }
+}
+
+export async function getFamilyData(userId, dateStr) {
+	if (!supabase) return { members: [], incoming: [], outgoing: [] }
+
+	// Получаем все связи, где участвует пользователь
+	const { data: links } = await supabase
+		.from('family_links')
+		.select('*')
+		.or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
+
+	if (!links) return { members: [], incoming: [], outgoing: [] }
+
+	const incoming = links.filter(
+		l => l.receiver_id === userId && l.status === 'pending'
+	)
+	const outgoing = links.filter(
+		l => l.requester_id === userId && l.status === 'pending'
+	)
+	const acceptedLinks = links.filter(l => l.status === 'accepted')
+
+	// Собираем ID всех принятых членов семьи
+	const memberIds = acceptedLinks.map(l =>
+		l.requester_id === userId ? l.receiver_id : l.requester_id
+	)
+
+	if (memberIds.length === 0) return { members: [], incoming, outgoing }
+
+	// Получаем профили членов семьи
+	const { data: profiles } = await supabase
+		.from('users')
+		.select('*')
+		.in('id', memberIds)
+
+	// Получаем их воду за сегодня
+	const { data: logs } = await supabase
+		.from('water_logs')
+		.select('user_id, amount_ml')
+		.in('user_id', memberIds)
+		.gte('logged_at', `${dateStr}T00:00:00Z`)
+
+	// Считаем прогресс каждого
+	const members = (profiles || []).map(p => {
+		const drank = (logs || [])
+			.filter(l => l.user_id === p.id)
+			.reduce((sum, l) => sum + l.amount_ml, 0)
+		return {
+			...p,
+			drank_today: drank,
+			progress: Math.min(Math.round((drank / p.water_goal_ml) * 100), 100)
+		}
+	})
+
+	return { members, incoming, outgoing }
+}
+
+export async function respondToRequest(linkId, status) {
+	if (!supabase) return
+	await supabase.from('family_links').update({ status }).eq('id', linkId)
+}
