@@ -7,18 +7,14 @@ import {
 } from './messages.js'
 
 export default async function handler(req, res) {
-	// 1. ПРОВЕРКА СЕКРЕТНОГО КЛЮЧА
 	const { searchParams } = new URL(
 		req.url,
 		`https://${req.headers.host || 'localhost'}`
 	)
 	const secret = searchParams.get('key')
 
-	// Если ключ не совпадает — выдаем ошибку
 	if (secret !== 'water_secret_2024') {
-		return res
-			.status(401)
-			.json({ error: 'Unauthorized: Неверный или отсутствующий ключ доступа' })
+		return res.status(401).json({ error: 'Unauthorized: Неверный ключ' })
 	}
 
 	const botToken = process.env.TELEGRAM_BOT_TOKEN
@@ -26,15 +22,11 @@ export default async function handler(req, res) {
 	const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
 
 	if (!botToken || !supabaseUrl || !supabaseKey) {
-		return res
-			.status(500)
-			.json({ error: 'В Vercel не добавлены переменные окружения!' })
+		return res.status(500).json({ error: 'В Vercel не добавлены переменные!' })
 	}
 
 	const supabase = createClient(supabaseUrl, supabaseKey)
 	const now = new Date()
-
-	// Переводим время в МСК (UTC+3)
 	const hour = (now.getUTCHours() + 3) % 24
 	const today = now.toISOString().slice(0, 10)
 
@@ -50,7 +42,7 @@ export default async function handler(req, res) {
 	} else
 		return res
 			.status(200)
-			.json({ msg: `Сейчас ночь (${hour} ч. по МСК), бот молчит.` })
+			.json({ msg: `Сейчас ночь (${hour} ч.), бот молчит.` })
 
 	const { data: users, error } = await supabase.from('users').select('*')
 	if (error || !users || users.length === 0)
@@ -60,22 +52,6 @@ export default async function handler(req, res) {
 	let errors = []
 
 	for (const user of users) {
-		// 2. ПРОВЕРКА НА ДУБЛИ (если отправляли меньше 2 часов назад)
-		const lastNotified = user.last_notified_at
-			? new Date(user.last_notified_at)
-			: null
-		if (lastNotified) {
-			const diffInMs = now - lastNotified
-			const diffInHours = diffInMs / (1000 * 60 * 60)
-			if (diffInHours < 2) {
-				errors.push(
-					`Пользователь ${user.id}: недавно получал сообщение. Пропускаем, чтобы не спамить.`
-				)
-				continue
-			}
-		}
-
-		// 3. ПРОВЕРКА ВЫПИТОЙ ВОДЫ
 		const { data: logs } = await supabase
 			.from('water_logs')
 			.select('amount_ml')
@@ -84,14 +60,12 @@ export default async function handler(req, res) {
 
 		const totalDrunk = logs?.reduce((sum, log) => sum + log.amount_ml, 0) || 0
 
+		// Если норма выполнена — пропускаем
 		if (totalDrunk >= user.water_goal_ml) {
-			errors.push(
-				`Пользователь ${user.id}: норма выполнена, сообщение не отправлено.`
-			)
+			errors.push(`Пользователь ${user.id}: норма выполнена.`)
 			continue
 		}
 
-		// 4. ОТПРАВКА
 		let text = messagePool[Math.floor(Math.random() * messagePool.length)]
 		if (isThreat) {
 			const streak = user.streak_days || 0
@@ -112,11 +86,6 @@ export default async function handler(req, res) {
 
 		if (tgResult.ok) {
 			sentCount++
-			// Записываем время отправки
-			await supabase
-				.from('users')
-				.update({ last_notified_at: now.toISOString() })
-				.eq('id', user.id)
 		} else {
 			errors.push(`Ошибка для ID ${user.id}: ${tgResult.description}`)
 		}
@@ -125,7 +94,6 @@ export default async function handler(req, res) {
 	res.status(200).json({
 		ok: true,
 		час_на_сервере_мск: hour,
-		всего_юзеров: users.length,
 		успешно_отправлено: sentCount,
 		ошибки: errors
 	})
