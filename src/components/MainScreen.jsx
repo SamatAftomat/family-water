@@ -28,7 +28,7 @@ function MainScreen() {
 	const [isAdding, setIsAdding] = useState(false)
 
 	const [tab, setTab] = useState('today')
-	const [slideDir, setSlideDir] = useState('fade') // Направление анимации
+	const [slideDir, setSlideDir] = useState('fade')
 	const [customAmount, setCustomAmount] = useState('')
 	const [showCustom, setShowCustom] = useState(false)
 	const [settings, setSettings] = useState(false)
@@ -37,7 +37,6 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
-	// Стейты для семьи
 	const [familyData, setFamilyData] = useState({
 		members: [],
 		incoming: [],
@@ -81,7 +80,7 @@ function MainScreen() {
 	}
 
 	const changeTab = newTab => {
-		setSlideDir('fade') // При клике на кнопку делаем плавное появление
+		setSlideDir('fade')
 		setTab(newTab)
 	}
 	// -----------------------
@@ -297,6 +296,12 @@ function MainScreen() {
 		[logs, today, total, chartTotals]
 	)
 
+	// Вычисления для графика
+	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
+	const weekAverage = Math.round(weekTotal / 7)
+	// Максимальный масштаб графика (чтобы столбики не улетали за край)
+	const maxScale = Math.max(goal * 1.2, ...weekData.map(d => d.total), 1)
+
 	if (isLoading) {
 		return (
 			<div
@@ -347,12 +352,9 @@ function MainScreen() {
 				</div>
 			</section>
 
-			{/* АНИМАЦИЯ ПРИ ПЕРЕКЛЮЧЕНИИ ВКЛАДОК */}
 			<div
 				className={`swipe-container slide-${slideDir}`}
-				key={
-					tab
-				} /* key заставляет React пересоздать узел и запустить анимацию */
+				key={tab}
 				onTouchStart={onTouchStart}
 				onTouchMove={onTouchMove}
 				onTouchEnd={onTouchEnd}
@@ -536,37 +538,50 @@ function MainScreen() {
 					<section className="section-block page-block">
 						<p className="eyebrow">ПОСЛЕДНИЕ 7 ДНЕЙ</p>
 						<h2>Аналитика</h2>
+
 						<div className="chart">
-							{weekData.map(day => (
+							<div className="chart-bars-area">
+								{/* Линия цели */}
 								<div
-									className="chart-column"
-									key={day.key}
+									className="goal-line"
+									style={{ bottom: `${(goal / maxScale) * 100}%` }}
 								>
-									<div className="bar-container">
+									<span className="goal-text">{goal}</span>
+								</div>
+								{/* Столбики */}
+								{weekData.map(day => (
+									<div
+										className="chart-column"
+										key={day.key}
+									>
 										<div
 											className="bar"
 											style={{
-												height: `${Math.max(8, Math.min((day.total / goal) * 100, 100))}%`
+												height: `${Math.min((day.total / maxScale) * 100, 100)}%`
 											}}
 											title={`${day.total} мл`}
 										/>
 									</div>
-									<small>{day.label}</small>
-								</div>
-							))}
+								))}
+							</div>
+							<div className="chart-labels">
+								{weekData.map(day => (
+									<small key={day.key}>{day.label}</small>
+								))}
+							</div>
 						</div>
+
 						<div className="analytics-summary">
 							<span>
-								Среднее за день{' '}
+								Выпито за неделю{' '}
 								<strong>
-									{Math.round(
-										weekData.reduce((sum, day) => sum + day.total, 0) / 7
-									)}{' '}
-									мл
+									{weekTotal >= 1000
+										? (weekTotal / 1000).toFixed(1) + ' л'
+										: weekTotal + ' мл'}
 								</strong>
 							</span>
 							<span>
-								Цель <strong>{goal} мл</strong>
+								Среднее за день <strong>{weekAverage} мл</strong>
 							</span>
 						</div>
 					</section>
