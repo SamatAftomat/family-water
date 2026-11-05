@@ -191,23 +191,20 @@ export default function FamilyTab({
 							</div>
 						</div>
 
-						{/* СТАТИСТИКА УЧАСТНИКОВ */}
+						{/* СТАТИСТИКА УЧАСТНИКОВ С ВОДОЙ */}
 						<div
 							style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
 						>
 							{fam.members.map(m => {
-								// Показываем только тех, кто принят (или нас самих)
 								if (m.status !== 'accepted' && m.user_id !== userId) return null
 
-								// Тут мы могли бы подгружать воду, но для простоты выведем заглушку,
-								// так как запрос воды по всей семье требует отдельной функции в api.js
 								return (
 									<div
 										key={m.id}
 										style={{
 											display: 'flex',
-											alignItems: 'center',
-											gap: '10px',
+											flexDirection: 'column',
+											gap: '8px',
 											padding: '10px',
 											background: '#f8fafc',
 											borderRadius: '12px'
@@ -215,33 +212,69 @@ export default function FamilyTab({
 									>
 										<div
 											style={{
-												width: '36px',
-												height: '36px',
-												background: '#5a80d8',
-												color: '#fff',
-												borderRadius: '50%',
 												display: 'flex',
 												alignItems: 'center',
-												justifyContent: 'center',
-												fontWeight: 'bold'
+												gap: '10px'
 											}}
 										>
-											{m.first_name[0]}
-										</div>
-										<div style={{ flex: 1 }}>
 											<div
 												style={{
-													fontWeight: '700',
-													fontSize: '14px',
-													color: '#173f70'
+													width: '36px',
+													height: '36px',
+													background: '#5a80d8',
+													color: '#fff',
+													borderRadius: '50%',
+													display: 'flex',
+													alignItems: 'center',
+													justifyContent: 'center',
+													fontWeight: 'bold'
 												}}
 											>
-												{m.first_name} {m.role === 'owner' && '👑'}{' '}
-												{m.user_id === userId && '(Вы)'}
+												{m.first_name[0]}
 											</div>
-											<div style={{ fontSize: '12px', color: '#71869d' }}>
-												{m.status === 'accepted' ? 'В группе' : 'Ожидает'}
+											<div style={{ flex: 1 }}>
+												<div
+													style={{
+														fontWeight: '700',
+														fontSize: '14px',
+														color: '#173f70'
+													}}
+												>
+													{m.first_name} {m.role === 'owner' && '👑'}{' '}
+													{m.user_id === userId && '(Вы)'}
+												</div>
+												<div style={{ fontSize: '12px', color: '#71869d' }}>
+													{m.drank_today} / {m.water_goal_ml} мл
+												</div>
 											</div>
+											<span
+												style={{
+													fontSize: '14px',
+													fontWeight: 'bold',
+													color: m.progress >= 100 ? '#0ba360' : '#1886ad'
+												}}
+											>
+												{m.progress}%
+											</span>
+										</div>
+										{/* Полоска прогресса */}
+										<div
+											style={{
+												width: '100%',
+												height: '6px',
+												background: '#e2e8f0',
+												borderRadius: '3px',
+												overflow: 'hidden'
+											}}
+										>
+											<div
+												style={{
+													width: `${m.progress}%`,
+													height: '100%',
+													background: m.progress >= 100 ? '#0ba360' : '#1886ad',
+													transition: 'width 0.3s'
+												}}
+											/>
 										</div>
 									</div>
 								)
@@ -374,7 +407,6 @@ export default function FamilyTab({
 							Настройки: {settingsFamily.name}
 						</h3>
 
-						{/* Переименовать */}
 						<button
 							onClick={() => {
 								const newName = prompt(
@@ -400,7 +432,6 @@ export default function FamilyTab({
 							✏️ Переименовать
 						</button>
 
-						{/* Выгнать участников */}
 						{settingsFamily.members
 							.filter(m => m.user_id !== userId)
 							.map(m => (
@@ -427,7 +458,6 @@ export default function FamilyTab({
 								</button>
 							))}
 
-						{/* Удалить группу (если ты владелец) */}
 						{settingsFamily.owner_id === userId && (
 							<button
 								onClick={() => {

@@ -83,7 +83,7 @@ export async function deleteLogFromDb(logId) {
 }
 
 // ==========================================
-// НОВАЯ ЛОГИКА: СЕМЕЙНЫЕ ГРУППЫ
+// СЕМЕЙНЫЕ ГРУППЫ
 // ==========================================
 
 // Создать новую группу
@@ -111,10 +111,11 @@ export async function createFamily(userId, familyName) {
 	return { success: true, familyId: family.id }
 }
 
-// Получить мои группы и участников в них
-export async function getMyFamilies(userId) {
+// Получить мои группы и участников (с прогрессом воды)
+export async function getMyFamilies(userId, dateStr) {
 	if (!supabase) return []
 
+	// 1. Ищем все группы, где я состою (принят)
 	const { data: myMemberships } = await supabase
 		.from('family_members')
 		.select('family_id')
@@ -124,10 +125,13 @@ export async function getMyFamilies(userId) {
 	if (!myMemberships || myMemberships.length === 0) return []
 	const familyIds = myMemberships.map(m => m.family_id)
 
+	// 2. Загружаем сами группы
 	const { data: families } = await supabase
 		.from('families')
 		.select('*')
 		.in('id', familyIds)
+
+	// 3. Загружаем всех участников
 	const { data: allMembers } = await supabase
 		.from('family_members')
 		.select('*')
@@ -136,19 +140,43 @@ export async function getMyFamilies(userId) {
 	const allUserIds = allMembers
 		? [...new Set(allMembers.map(m => m.user_id))]
 		: []
+
+	// 4. Загружаем профили (имена, цели)
 	const { data: profiles } = await supabase
 		.from('users')
 		.select('*')
 		.in('id', allUserIds)
 
+	// 5. Загружаем воду за сегодня для всех участников
+	const startOfDay = new Date(`${dateStr}T00:00:00`)
+	const endOfDay = new Date(`${dateStr}T23:59:59.999`)
+
+	const { data: logs } = await supabase
+		.from('water_logs')
+		.select('user_id, amount_ml')
+		.in('user_id', allUserIds)
+		.gte('logged_at', startOfDay.toISOString())
+		.lte('logged_at', endOfDay.toISOString())
+
+	// 6. Собираем всё воедино
 	return (families || []).map(fam => {
 		const members = (allMembers || [])
 			.filter(m => m.family_id === fam.id)
 			.map(m => {
 				const prof = (profiles || []).find(p => p.id === m.user_id)
+
+				const drank = (logs || [])
+					.filter(l => l.user_id === m.user_id)
+					.reduce((sum, l) => sum + l.amount_ml, 0)
+				const goal = prof?.water_goal_ml || 2100
+				const progress = Math.min(Math.round((drank / goal) * 100), 100)
+
 				return {
 					...m,
-					first_name: prof?.first_name || 'Пользователь'
+					first_name: prof?.first_name || 'Пользователь',
+					drank_today: drank,
+					water_goal_ml: goal,
+					progress
 				}
 			})
 		return {
@@ -181,7 +209,6 @@ export async function inviteToFamily(familyId, userId, senderName, familyName) {
 
 	if (error) return { error: error.message }
 
-	// Отправляем уведомление в Telegram
 	fetch('https://family-water.vercel.app/api/notify', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -196,7 +223,7 @@ export async function inviteToFamily(familyId, userId, senderName, familyName) {
 	return { success: true }
 }
 
-// Принять приглашение в группу
+// Принять приглашение
 export async function acceptFamilyInvite(familyId, userId) {
 	if (!supabase) return { error: 'Нет связи с базой' }
 	const { error } = await supabase
@@ -232,17 +259,16 @@ export async function getMyInvites(userId) {
 		return { ...inv, familyName: fam?.name || 'Семья' }
 	})
 }
-// Удалить группу (только владелец)
+
+// Удалить группу
 export async function deleteFamily(familyId) {
 	if (!supabase) return
-	// Сначала удаляем всех участников
 	await supabase.from('family_members').delete().eq('family_id', familyId)
-	// Потом саму группу
 	const { error } = await supabase.from('families').delete().eq('id', familyId)
 	return { error: error?.message }
 }
 
-// Выгнать участника (только владелец)
+// Выгнать участника
 export async function kickFromFamily(familyId, memberId) {
 	if (!supabase) return
 	const { error } = await supabase

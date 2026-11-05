@@ -151,7 +151,7 @@ function MainScreen() {
 	}, [profile, today])
 
 	const loadFamilies = async () => {
-		const fams = await getMyFamilies(userId)
+		const fams = await getMyFamilies(userId, today)
 		const invs = await getMyInvites(userId)
 		setFamilies(fams)
 		setInvites(invs)
