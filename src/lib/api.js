@@ -16,8 +16,10 @@ export async function getUserProfile(userId) {
 
 export async function getTodayLogs(userId, dateStr) {
 	if (!supabase) return []
-	const startOfDay = new Date(`${dateStr}T00:00:00`)
-	const endOfDay = new Date(`${dateStr}T23:59:59.999`)
+
+	// Берем начало и конец дня по МСК
+	const startOfDay = new Date(`${dateStr}T00:00:00+03:00`)
+	const endOfDay = new Date(`${dateStr}T23:59:59.999+03:00`)
 
 	const { data } = await supabase
 		.from('water_logs')
@@ -27,17 +29,24 @@ export async function getTodayLogs(userId, dateStr) {
 		.lte('logged_at', endOfDay.toISOString())
 		.order('logged_at', { ascending: false })
 
-	return (data || []).map(log => ({
-		id: log.id.toString(),
-		amount: log.amount_ml,
-		// ВОТ ЗДЕСЬ МЫ ДОБАВИЛИ ЧАСОВОЙ ПОЯС
-		time: new Date(log.logged_at).toLocaleTimeString('ru-RU', {
-			hour: '2-digit',
-			minute: '2-digit',
-			timeZone: 'Europe/Moscow'
-		}),
-		date: dateStr
-	}))
+	return (data || []).map(log => {
+		// Берем время из базы (это UTC)
+		const dateObj = new Date(log.logged_at)
+
+		// Принудительно прибавляем 3 часа (МСК)
+		const mskDate = new Date(dateObj.getTime() + 3 * 60 * 60 * 1000)
+
+		// Форматируем в строку ЧЧ:ММ
+		const hours = String(mskDate.getUTCHours()).padStart(2, '0')
+		const minutes = String(mskDate.getUTCMinutes()).padStart(2, '0')
+
+		return {
+			id: log.id.toString(),
+			amount: log.amount_ml,
+			time: `${hours}:${minutes}`, // Вот наше московское время
+			date: dateStr
+		}
+	})
 }
 
 export async function getLast7DaysTotal(userId) {
