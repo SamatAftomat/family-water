@@ -1,7 +1,7 @@
 import { supabase } from './telegram'
 
 // ==========================================
-// БАЗОВЫЕ ФУНКЦИИ ПРОФИЛЯ И ВОДЫ
+// БАЗОВЫЕ ФУНКЦИИ
 // ==========================================
 
 export async function getUserProfile(userId) {
@@ -67,6 +67,23 @@ export async function getLast7DaysTotal(userId) {
 	return totals
 }
 
+// ==========================================
+// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ЧЕРЕЗ API)
+// ==========================================
+
+async function callUserApi(action, payload = {}) {
+	const initData = window.Telegram?.WebApp?.initData
+	if (!initData) return { error: 'Откройте через Telegram' }
+
+	const res = await fetch('/api/user-action', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ initData, action, payload })
+	})
+	const data = await res.json()
+	return res.ok ? { success: true } : { error: data.error }
+}
+
 export async function addWaterToDb(userId, amount, profile) {
 	const initData = window.Telegram?.WebApp?.initData
 	if (!initData) throw new Error('Откройте приложение через Telegram')
@@ -84,12 +101,19 @@ export async function addWaterToDb(userId, amount, profile) {
 }
 
 export async function deleteLogFromDb(logId) {
-	if (!supabase) return
-	await supabase.from('water_logs').delete().eq('id', logId)
+	return callUserApi('delete_log', { logId })
+}
+
+export async function clearTodayLogs(startOfDayISO) {
+	return callUserApi('clear_logs', { startOfDay: startOfDayISO })
+}
+
+export async function updateProfileDb(name, weight) {
+	return callUserApi('update_profile', { name, weight })
 }
 
 // ==========================================
-// СЕМЕЙНЫЕ ГРУППЫ (ЧЕРЕЗ БЕЗОПАСНЫЙ API)
+// СЕМЕЙНЫЕ ГРУППЫ
 // ==========================================
 
 export async function getMyFamilies(userId, dateStr) {
@@ -169,7 +193,6 @@ export async function getMyInvites(userId) {
 	}))
 }
 
-// API-ВЫЗОВЫ ДЛЯ СЕМЬИ
 async function callFamilyApi(action, payload = {}) {
 	const initData = window.Telegram?.WebApp?.initData
 	if (!initData) return { error: 'Откройте через Telegram' }

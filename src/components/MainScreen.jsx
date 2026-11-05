@@ -279,25 +279,24 @@ function MainScreen() {
 		setChartTotals(await getLast7DaysTotal(userId))
 	}
 
+	// 3. Замени функцию clearAllLogs:
 	async function clearAllLogs() {
 		if (!window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?'))
 			return
-		if (!supabase) return
-		await supabase
-			.from('water_logs')
-			.delete()
-			.eq('user_id', userId)
-			.gte('logged_at', `${today}T00:00:00Z`)
+		const startOfDayISO = new Date(`${today}T00:00:00+03:00`).toISOString()
+		await clearTodayLogs(startOfDayISO)
 		setLogs([])
 		setChartTotals(await getLast7DaysTotal(userId))
 	}
 
-	function saveSettings(event) {
+	// 4. Замени функцию saveSettings:
+	async function saveSettings(event) {
 		event.preventDefault()
 		const form = new FormData(event.currentTarget)
 		const name = String(form.get('name') || '').trim()
 		const weight = Number(form.get('weight'))
 		if (!name || !weight || weight <= 0) return
+
 		const updated = {
 			...profile,
 			first_name: name,
@@ -306,16 +305,8 @@ function MainScreen() {
 		}
 		setProfile(updated)
 		localStorage.setItem('family-water-profile', JSON.stringify(updated))
-		if (supabase)
-			supabase
-				.from('users')
-				.update({
-					first_name: name,
-					weight_kg: weight,
-					water_goal_ml: weight * 30
-				})
-				.eq('id', userId)
-				.then()
+
+		await updateProfileDb(name, weight)
 		setSettings(false)
 	}
 
