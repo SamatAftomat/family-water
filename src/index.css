@@ -875,3 +875,10 @@ body {
 	max-width: 100vw;
 	-webkit-text-size-adjust: 100% !important;
 }
+.swipe-container {
+	width: 100%;
+	touch-action: pan-y;
+	will-change: transform, opacity;
+	backface-visibility: hidden; /* Сглаживает анимации на Android */
+	-webkit-backface-visibility: hidden;
+}
