@@ -3,9 +3,11 @@ import { useState } from 'react'
 export default function FamilyTab({
 	userId,
 	families,
+	invites,
 	shareId,
 	handleCreateFamily,
 	handleInvite,
+	handleAcceptInvite,
 	familyLoading
 }) {
 	const [newFamilyName, setNewFamilyName] = useState('')
@@ -20,16 +22,62 @@ export default function FamilyTab({
 				setCopySuccess(true)
 				setTimeout(() => setCopySuccess(false), 2000)
 			})
-			.catch(() => {
-				alert('Не удалось скопировать. Ваш ID: ' + userId)
-			})
+			.catch(() => alert('Ваш ID: ' + userId))
 	}
 
 	return (
 		<section className="section-block page-block">
 			<p className="eyebrow">ВМЕСТЕ ЛЕГЧЕ</p>
 
-			{/* --- ВЕРНУЛИ БЛОК С ID --- */}
+			{/* ВХОДЯЩИЕ ПРИГЛАШЕНИЯ */}
+			{invites && invites.length > 0 && (
+				<div
+					style={{
+						background: '#fff3e0',
+						padding: '16px',
+						borderRadius: '16px',
+						marginBottom: '20px',
+						border: '1px solid #ffe0b2'
+					}}
+				>
+					<h3
+						style={{ margin: '0 0 12px', fontSize: '16px', color: '#e65c00' }}
+					>
+						У вас есть приглашения!
+					</h3>
+					{invites.map(inv => (
+						<div
+							key={inv.id}
+							style={{
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center',
+								marginBottom: '10px'
+							}}
+						>
+							<span style={{ fontSize: '14px', fontWeight: 'bold' }}>
+								{inv.familyName}
+							</span>
+							<button
+								onClick={() => handleAcceptInvite(inv.family_id)}
+								disabled={familyLoading}
+								style={{
+									background: '#0ba360',
+									color: '#fff',
+									border: 'none',
+									padding: '8px 16px',
+									borderRadius: '8px',
+									fontWeight: 'bold'
+								}}
+							>
+								Принять
+							</button>
+						</div>
+					))}
+				</div>
+			)}
+
+			{/* МОЙ ID */}
 			<div
 				style={{
 					background: 'rgba(23, 63, 112, 0.05)',
@@ -55,7 +103,6 @@ export default function FamilyTab({
 				>
 					{userId}
 				</div>
-
 				<button
 					onClick={copyToClipboard}
 					style={{
@@ -71,7 +118,6 @@ export default function FamilyTab({
 				>
 					{copySuccess ? '✅ Скопировано!' : '📋 Скопировать ID'}
 				</button>
-
 				<button
 					onClick={shareId}
 					style={{
@@ -88,7 +134,7 @@ export default function FamilyTab({
 				</button>
 			</div>
 
-			{/* Мои группы */}
+			{/* МОИ ГРУППЫ */}
 			<h2>Мои группы</h2>
 			{families.length === 0 ? (
 				<p className="empty-note">Ты пока не состоишь ни в одной группе.</p>
@@ -152,7 +198,7 @@ export default function FamilyTab({
 				))
 			)}
 
-			{/* Создать новую группу */}
+			{/* СОЗДАТЬ ГРУППУ */}
 			<div
 				style={{
 					marginTop: '24px',
@@ -203,7 +249,7 @@ export default function FamilyTab({
 				</form>
 			</div>
 
-			{/* Модалка приглашения */}
+			{/* МОДАЛКА ПРИГЛАШЕНИЯ */}
 			{selectedFamily && (
 				<div
 					className="modal-backdrop"
@@ -220,7 +266,7 @@ export default function FamilyTab({
 						<form
 							onSubmit={e => {
 								e.preventDefault()
-								handleInvite(selectedFamily.id, inviteId)
+								handleInvite(selectedFamily.id, inviteId, selectedFamily.name)
 								setInviteId('')
 								setSelectedFamily(null)
 							}}

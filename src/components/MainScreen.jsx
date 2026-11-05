@@ -9,11 +9,13 @@ import {
 	getLast7DaysTotal,
 	createFamily,
 	getMyFamilies,
-	inviteToFamily
+	inviteToFamily,
+	acceptFamilyInvite,
+	getMyInvites
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
-// Импортируем компоненты
+// Компоненты
 import NavButton from './NavButton'
 import TodayTab from './tabs/TodayTab'
 import DiaryTab from './tabs/DiaryTab'
@@ -31,14 +33,13 @@ const todayKey = () => {
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
 
-	// Состояния профиля и воды
+	// Состояния
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
 	const [chartTotals, setChartTotals] = useState({})
 	const [isLoading, setIsLoading] = useState(true)
 	const [isAdding, setIsAdding] = useState(false)
 
-	// Состояния интерфейса
 	const [tab, setTab] = useState('today')
 	const [customAmount, setCustomAmount] = useState('')
 	const [showCustom, setShowCustom] = useState(false)
@@ -53,11 +54,12 @@ function MainScreen() {
 	const [diamondPop, setDiamondPop] = useState(false)
 	const diamondTargetRef = useRef(null)
 
-	// Семейные группы (НОВОЕ)
+	// Семейные группы
 	const [families, setFamilies] = useState([])
+	const [invites, setInvites] = useState([])
 	const [familyLoading, setFamilyLoading] = useState(false)
 
-	// Логика свайпов
+	// Свайпы
 	const touchStart = useRef({ x: 0, y: 0 })
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
@@ -152,7 +154,9 @@ function MainScreen() {
 
 	const loadFamilies = async () => {
 		const fams = await getMyFamilies(userId)
+		const invs = await getMyInvites(userId)
 		setFamilies(fams)
+		setInvites(invs)
 	}
 
 	useEffect(() => {
@@ -330,7 +334,6 @@ function MainScreen() {
 				.then(() => alert(`ID скопирован: ${userId}`))
 	}
 
-	// НОВЫЕ ОБРАБОТЧИКИ ДЛЯ СЕМЬИ
 	async function handleCreateFamily(name) {
 		if (!name.trim()) return
 		setFamilyLoading(true)
@@ -340,15 +343,27 @@ function MainScreen() {
 		setFamilyLoading(false)
 	}
 
-	async function handleInvite(familyId, inviteeId) {
+	async function handleInvite(familyId, inviteeId, familyName) {
 		if (!inviteeId) return
 		setFamilyLoading(true)
-		const res = await inviteToFamily(familyId, Number(inviteeId))
+		const res = await inviteToFamily(
+			familyId,
+			Number(inviteeId),
+			profile.first_name,
+			familyName
+		)
 		if (res.error) alert(res.error)
 		else {
 			alert('Приглашение отправлено!')
 			await loadFamilies()
 		}
+		setFamilyLoading(false)
+	}
+
+	async function handleAcceptInvite(familyId) {
+		setFamilyLoading(true)
+		await acceptFamilyInvite(familyId, userId)
+		await loadFamilies()
 		setFamilyLoading(false)
 	}
 
@@ -460,9 +475,11 @@ function MainScreen() {
 					<FamilyTab
 						userId={userId}
 						families={families}
+						invites={invites}
 						shareId={shareId}
 						handleCreateFamily={handleCreateFamily}
 						handleInvite={handleInvite}
+						handleAcceptInvite={handleAcceptInvite}
 						familyLoading={familyLoading}
 					/>
 				)}
