@@ -87,9 +87,6 @@ function MainScreen() {
 	}
 
 	useEffect(() => {
-		const el = containerRef.current
-		if (!el) return
-
 		const handleStart = e => {
 			touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
 			touchEnd.current = { x: 0, y: 0 }
@@ -115,14 +112,15 @@ function MainScreen() {
 			}
 		}
 
-		el.addEventListener('touchstart', handleStart, { passive: true })
-		el.addEventListener('touchmove', handleMove, { passive: true })
-		el.addEventListener('touchend', handleEnd, { passive: true })
+		// ВЕШАЕМ СОБЫТИЯ НА WINDOW (на весь экран)
+		window.addEventListener('touchstart', handleStart, { passive: true })
+		window.addEventListener('touchmove', handleMove, { passive: true })
+		window.addEventListener('touchend', handleEnd, { passive: true })
 
 		return () => {
-			el.removeEventListener('touchstart', handleStart)
-			el.removeEventListener('touchmove', handleMove)
-			el.removeEventListener('touchend', handleEnd)
+			window.removeEventListener('touchstart', handleStart)
+			window.removeEventListener('touchmove', handleMove)
+			window.removeEventListener('touchend', handleEnd)
 		}
 	}, [tab])
 

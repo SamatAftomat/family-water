@@ -666,11 +666,7 @@ body {
 
 /* Оптимизация свайпов */
 .swipe-container {
-	width: 100%;
-	touch-action: pan-y;
-	will-change: transform, opacity;
-	backface-visibility: hidden;
-	-webkit-backface-visibility: hidden;
+  width: 100%;
 }
 
 /* ==========================================
