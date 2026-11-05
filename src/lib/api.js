@@ -1,9 +1,21 @@
-import { supabase } from './telegram'
+import { supabase, getInitData } from './telegram'
 
-// ==========================================
-// БАЗОВЫЕ ФУНКЦИИ ПРОФИЛЯ И ВОДЫ
-// ==========================================
+// Замени старую функцию addWaterToDb на эту:
+export async function addWaterToDb(userId, amount, profile) {
+	const initData = getInitData()
+	if (!initData) throw new Error('Откройте приложение через Telegram')
 
+	const response = await fetch('/api/add-water', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ initData, amount })
+	})
+
+	if (!response.ok) {
+		const err = await response.json()
+		throw new Error(err.error || 'Ошибка сервера')
+	}
+}
 export async function getUserProfile(userId) {
 	if (!supabase) return null
 	const { data } = await supabase

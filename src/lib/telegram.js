@@ -8,7 +8,9 @@ export const supabase =
 	supabaseUrl && supabaseAnonKey
 		? createClient(supabaseUrl, supabaseAnonKey)
 		: null
-
+export function getInitData() {
+	return window.Telegram?.WebApp?.initData || ''
+}
 export function useTelegramInit() {
 	useEffect(() => {
 		window.Telegram?.WebApp?.ready?.()
