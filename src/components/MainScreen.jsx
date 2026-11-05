@@ -11,11 +11,13 @@ import {
 	getMyFamilies,
 	inviteToFamily,
 	acceptFamilyInvite,
-	getMyInvites
+	getMyInvites,
+	deleteFamily,
+	kickFromFamily,
+	renameFamily
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
-// Компоненты
 import NavButton from './NavButton'
 import TodayTab from './tabs/TodayTab'
 import DiaryTab from './tabs/DiaryTab'
@@ -33,7 +35,6 @@ const todayKey = () => {
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
 
-	// Состояния
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
 	const [chartTotals, setChartTotals] = useState({})
@@ -49,17 +50,14 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
-	// Награда
 	const [showReward, setShowReward] = useState(false)
 	const [diamondPop, setDiamondPop] = useState(false)
 	const diamondTargetRef = useRef(null)
 
-	// Семейные группы
 	const [families, setFamilies] = useState([])
 	const [invites, setInvites] = useState([])
 	const [familyLoading, setFamilyLoading] = useState(false)
 
-	// Свайпы
 	const touchStart = useRef({ x: 0, y: 0 })
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
@@ -367,6 +365,28 @@ function MainScreen() {
 		setFamilyLoading(false)
 	}
 
+	// НОВЫЕ ОБРАБОТЧИКИ
+	async function handleDeleteFamily(familyId) {
+		setFamilyLoading(true)
+		await deleteFamily(familyId)
+		await loadFamilies()
+		setFamilyLoading(false)
+	}
+
+	async function handleKickMember(familyId, memberId) {
+		setFamilyLoading(true)
+		await kickFromFamily(familyId, memberId)
+		await loadFamilies()
+		setFamilyLoading(false)
+	}
+
+	async function handleRenameFamily(familyId, newName) {
+		setFamilyLoading(true)
+		await renameFamily(familyId, newName)
+		await loadFamilies()
+		setFamilyLoading(false)
+	}
+
 	const weekData = useMemo(
 		() =>
 			Array.from({ length: 7 }, (_, index) => {
@@ -480,6 +500,9 @@ function MainScreen() {
 						handleCreateFamily={handleCreateFamily}
 						handleInvite={handleInvite}
 						handleAcceptInvite={handleAcceptInvite}
+						handleDeleteFamily={handleDeleteFamily}
+						handleKickMember={handleKickMember}
+						handleRenameFamily={handleRenameFamily}
 						familyLoading={familyLoading}
 					/>
 				)}

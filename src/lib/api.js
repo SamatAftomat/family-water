@@ -232,3 +232,33 @@ export async function getMyInvites(userId) {
 		return { ...inv, familyName: fam?.name || 'Семья' }
 	})
 }
+// Удалить группу (только владелец)
+export async function deleteFamily(familyId) {
+	if (!supabase) return
+	// Сначала удаляем всех участников
+	await supabase.from('family_members').delete().eq('family_id', familyId)
+	// Потом саму группу
+	const { error } = await supabase.from('families').delete().eq('id', familyId)
+	return { error: error?.message }
+}
+
+// Выгнать участника (только владелец)
+export async function kickFromFamily(familyId, memberId) {
+	if (!supabase) return
+	const { error } = await supabase
+		.from('family_members')
+		.delete()
+		.eq('family_id', familyId)
+		.eq('user_id', memberId)
+	return { error: error?.message }
+}
+
+// Переименовать группу
+export async function renameFamily(familyId, newName) {
+	if (!supabase) return
+	const { error } = await supabase
+		.from('families')
+		.update({ name: newName })
+		.eq('id', familyId)
+	return { error: error?.message }
+}
