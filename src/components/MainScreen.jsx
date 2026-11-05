@@ -37,8 +37,10 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
-	// Стейт для окна награды
+	// Стейты для награды
 	const [showReward, setShowReward] = useState(false)
+	const [diamondPop, setDiamondPop] = useState(false) // Для пружинки на верхнем счетчике
+	const diamondTargetRef = useRef(null) // Куда лететь
 
 	const [familyData, setFamilyData] = useState({
 		members: [],
@@ -54,7 +56,6 @@ function MainScreen() {
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family']
 
-	// Анимация свайпов через Web Animations API (без лагов)
 	const animateSlide = direction => {
 		const container = document.querySelector('.swipe-container')
 		if (!container) return
@@ -92,23 +93,18 @@ function MainScreen() {
 		}
 	}
 
-	// Обработчики свайпов (нативно на window, чтобы работало везде)
 	useEffect(() => {
 		const handleStart = e => {
 			touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
 			touchEnd.current = { x: 0, y: 0 }
 		}
-
 		const handleMove = e => {
 			touchEnd.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
 		}
-
 		const handleEnd = () => {
 			if (!touchStart.current.x || !touchEnd.current.x) return
 			const deltaX = touchStart.current.x - touchEnd.current.x
 			const deltaY = touchStart.current.y - touchEnd.current.y
-
-			// Если свайп больше вниз/вверх, игнорируем (чтобы не мешать скроллу)
 			if (Math.abs(deltaX) < minSwipeDistance) return
 			if (Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return
 
@@ -119,11 +115,9 @@ function MainScreen() {
 				goToTab(tabsOrder[currentIndex - 1], 'right')
 			}
 		}
-
 		window.addEventListener('touchstart', handleStart, { passive: true })
 		window.addEventListener('touchmove', handleMove, { passive: true })
 		window.addEventListener('touchend', handleEnd, { passive: true })
-
 		return () => {
 			window.removeEventListener('touchstart', handleStart)
 			window.removeEventListener('touchmove', handleMove)
@@ -209,19 +203,16 @@ function MainScreen() {
 		const wasComplete = total >= goal
 		const isCompleteNow = total + value >= goal
 
-		// ЗАПУСК ФЕЙЕРВЕРКА И ОКНА НАГРАДЫ
 		if (!wasComplete && isCompleteNow) {
 			if (window.Telegram?.WebApp?.HapticFeedback) {
 				window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
 			}
-
 			confetti({
 				particleCount: 150,
 				spread: 80,
 				origin: { y: 0.6 },
 				colors: ['#0ba360', '#3cba92', '#25b2c1', '#4facfe', '#ffffff']
 			})
-
 			setShowReward(true)
 		}
 
@@ -246,6 +237,51 @@ function MainScreen() {
 			setCustomAmount('')
 			setShowCustom(false)
 		}
+	}
+
+	// ФУНКЦИЯ ЛЕТЯЩЕГО АЛМАЗА
+	const handleClaimReward = () => {
+		setShowReward(false) // Скрываем модалку
+
+		const targetEl = diamondTargetRef.current
+		if (!targetEl) return
+
+		// Получаем координаты верхнего счетчика алмазов
+		const targetRect = targetEl.getBoundingClientRect()
+
+		// Создаем летящий элемент (алмаз)
+		const flyer = document.createElement('div')
+		flyer.innerText = '✦'
+		flyer.style.position = 'fixed'
+		flyer.style.color = '#c49b00'
+		flyer.style.fontSize = '40px'
+		flyer.style.zIndex = '9999'
+		flyer.style.pointerEvents = 'none'
+		flyer.style.transition = 'all 0.8s cubic-bezier(0.25, 1, 0.5, 1)' // Плавная траектория
+		flyer.style.textShadow = '0 4px 10px rgba(196, 155, 0, 0.5)'
+
+		// Стартовая позиция (центр экрана)
+		flyer.style.left = `${window.innerWidth / 2}px`
+		flyer.style.top = `${window.innerHeight / 2}px`
+		flyer.style.transform = 'translate(-50%, -50%) scale(1.5)'
+
+		document.body.appendChild(flyer)
+
+		// Через долю секунды отправляем его в цель
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				flyer.style.left = `${targetRect.left + targetRect.width / 2}px`
+				flyer.style.top = `${targetRect.top + targetRect.height / 2}px`
+				flyer.style.transform = 'translate(-50%, -50%) scale(0.5)'
+			})
+		})
+
+		// Когда долетел (800мс) — удаляем и включаем пружинку
+		setTimeout(() => {
+			flyer.remove()
+			setDiamondPop(true)
+			setTimeout(() => setDiamondPop(false), 300) // Убираем пружинку через 0.3 сек
+		}, 800)
 	}
 
 	async function removeLog(id) {
@@ -400,7 +436,12 @@ function MainScreen() {
 			</header>
 
 			<section className="compact-stats">
-				<div onClick={() => setActiveInfo('diamonds')}>
+				{/* ВОТ СЮДА МЫ ПРИВЯЗАЛИ REF (КУДА ЛЕТИТ АЛМАЗ) */}
+				<div
+					ref={diamondTargetRef}
+					className={diamondPop ? 'pop-anim' : ''}
+					onClick={() => setActiveInfo('diamonds')}
+				>
 					<span>✦</span>
 					<strong>{profile?.diamonds || 0}</strong>
 				</div>
@@ -828,11 +869,11 @@ function MainScreen() {
 				/>
 			</nav>
 
-			{/* ОКНО НАГРАДЫ С ФЕЙЕРВЕРКОМ */}
+			{/* МОДАЛКА НАГРАДЫ С НОВОЙ КНОПКОЙ */}
 			{showReward && (
 				<div
 					className="modal-backdrop"
-					onClick={() => setShowReward(false)}
+					onClick={handleClaimReward}
 				>
 					<div
 						className="reward-modal"
@@ -849,7 +890,7 @@ function MainScreen() {
 
 						<button
 							className="primary-action"
-							onClick={() => setShowReward(false)}
+							onClick={handleClaimReward}
 						>
 							Забрать награду
 						</button>
