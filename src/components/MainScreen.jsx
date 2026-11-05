@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import confetti from 'canvas-confetti'
 import { getTelegramUser } from '../lib/telegram'
 import {
 	getUserProfile,
@@ -12,7 +13,7 @@ import {
 	removeFamilyLink
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
-import confetti from 'canvas-confetti'
+
 const todayKey = () => {
 	const d = new Date()
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -36,6 +37,9 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
+	// Стейт для окна награды
+	const [showReward, setShowReward] = useState(false)
+
 	const [familyData, setFamilyData] = useState({
 		members: [],
 		incoming: [],
@@ -45,16 +49,17 @@ function MainScreen() {
 	const [familyMsg, setFamilyMsg] = useState('')
 	const [familyLoading, setFamilyLoading] = useState(false)
 
-	const containerRef = useRef(null)
 	const touchStart = useRef({ x: 0, y: 0 })
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family']
 
+	// Анимация свайпов через Web Animations API (без лагов)
 	const animateSlide = direction => {
-		if (!containerRef.current) return
+		const container = document.querySelector('.swipe-container')
+		if (!container) return
 		const translateFrom = direction === 'left' ? 40 : -40
-		containerRef.current.animate(
+		container.animate(
 			[
 				{ opacity: 0, transform: `translateX(${translateFrom}px)` },
 				{ opacity: 1, transform: 'translateX(0)' }
@@ -74,8 +79,9 @@ function MainScreen() {
 			requestAnimationFrame(() => animateSlide(direction))
 		} else {
 			requestAnimationFrame(() => {
-				if (!containerRef.current) return
-				containerRef.current.animate(
+				const container = document.querySelector('.swipe-container')
+				if (!container) return
+				container.animate(
 					[
 						{ opacity: 0, transform: 'scale(0.98)' },
 						{ opacity: 1, transform: 'scale(1)' }
@@ -86,6 +92,7 @@ function MainScreen() {
 		}
 	}
 
+	// Обработчики свайпов (нативно на window, чтобы работало везде)
 	useEffect(() => {
 		const handleStart = e => {
 			touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
@@ -101,6 +108,7 @@ function MainScreen() {
 			const deltaX = touchStart.current.x - touchEnd.current.x
 			const deltaY = touchStart.current.y - touchEnd.current.y
 
+			// Если свайп больше вниз/вверх, игнорируем (чтобы не мешать скроллу)
 			if (Math.abs(deltaX) < minSwipeDistance) return
 			if (Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return
 
@@ -112,7 +120,6 @@ function MainScreen() {
 			}
 		}
 
-		// ВЕШАЕМ СОБЫТИЯ НА WINDOW (на весь экран)
 		window.addEventListener('touchstart', handleStart, { passive: true })
 		window.addEventListener('touchmove', handleMove, { passive: true })
 		window.addEventListener('touchend', handleEnd, { passive: true })
@@ -199,28 +206,25 @@ function MainScreen() {
 		if (total + value > 5000)
 			return alert('Вы превысили суточный лимит в 5000 мл!')
 
-		// Проверяем, выполнили ли мы норму именно СЕЙЧАС
 		const wasComplete = total >= goal
 		const isCompleteNow = total + value >= goal
 
-		// Если только что выполнили — запускаем фейерверк!
+		// ЗАПУСК ФЕЙЕРВЕРКА И ОКНА НАГРАДЫ
 		if (!wasComplete && isCompleteNow) {
-			// Вибро-отклик (если в Telegram)
 			if (window.Telegram?.WebApp?.HapticFeedback) {
 				window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
 			}
 
-			// Сам фейерверк (стреляет с двух сторон)
 			confetti({
 				particleCount: 150,
-				spread: 70,
+				spread: 80,
 				origin: { y: 0.6 },
 				colors: ['#0ba360', '#3cba92', '#25b2c1', '#4facfe', '#ffffff']
 			})
 
-			// Показываем модалку с наградой (нам понадобится новый стейт)
 			setShowReward(true)
 		}
+
 		setIsAdding(true)
 		try {
 			await addWaterToDb(userId, value, profile)
@@ -394,6 +398,7 @@ function MainScreen() {
 					⚙
 				</button>
 			</header>
+
 			<section className="compact-stats">
 				<div onClick={() => setActiveInfo('diamonds')}>
 					<span>✦</span>
@@ -408,10 +413,8 @@ function MainScreen() {
 					<strong>{progress}%</strong>
 				</div>
 			</section>
-			<div
-				className="swipe-container"
-				ref={containerRef}
-			>
+
+			<div className="swipe-container">
 				{tab === 'today' && (
 					<>
 						<section className="progress-card">
@@ -797,6 +800,7 @@ function MainScreen() {
 					</section>
 				)}
 			</div>
+
 			<nav className="bottom-nav">
 				<NavButton
 					active={tab === 'today'}
@@ -823,6 +827,36 @@ function MainScreen() {
 					onClick={() => goToTab('family')}
 				/>
 			</nav>
+
+			{/* ОКНО НАГРАДЫ С ФЕЙЕРВЕРКОМ */}
+			{showReward && (
+				<div
+					className="modal-backdrop"
+					onClick={() => setShowReward(false)}
+				>
+					<div
+						className="reward-modal"
+						onClick={e => e.stopPropagation()}
+					>
+						<div className="reward-icon">🏆</div>
+						<h2>Норма выполнена!</h2>
+						<p>Ты выпил свою норму воды. Так держать!</p>
+
+						<div className="reward-diamonds">
+							<span>✦ +1 Алмаз</span>
+							<span>🔥 Стрик продлен</span>
+						</div>
+
+						<button
+							className="primary-action"
+							onClick={() => setShowReward(false)}
+						>
+							Забрать награду
+						</button>
+					</div>
+				</div>
+			)}
+
 			{settings && (
 				<div
 					className="modal-backdrop"
@@ -886,6 +920,7 @@ function MainScreen() {
 					</form>
 				</div>
 			)}
+
 			{activeInfo && (
 				<div
 					className="modal-backdrop"
@@ -944,33 +979,6 @@ function MainScreen() {
 								</p>
 							</>
 						)}
-					</div>
-				</div>
-			)}{' '}
-			{showReward && (
-				<div
-					className="modal-backdrop"
-					onClick={() => setShowReward(false)}
-				>
-					<div
-						className="reward-modal"
-						onClick={e => e.stopPropagation()}
-					>
-						<div className="reward-icon">🏆</div>
-						<h2>Норма выполнена!</h2>
-						<p>Ты выпил свою норму воды. Так держать!</p>
-
-						<div className="reward-diamonds">
-							<span>✦ +1 Алмаз</span>
-							<span>🔥 Стрик продлен</span>
-						</div>
-
-						<button
-							className="primary-action"
-							onClick={() => setShowReward(false)}
-						>
-							Забрать награду
-						</button>
 					</div>
 				</div>
 			)}
