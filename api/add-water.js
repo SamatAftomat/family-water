@@ -7,14 +7,12 @@ export default async function handler(req, res) {
 	const { initData, amount } = req.body
 	const botToken = process.env.TELEGRAM_BOT_TOKEN
 	const supabaseUrl = process.env.VITE_SUPABASE_URL
-	// ИСПОЛЬЗУЕМ СЕКРЕТНЫЙ КЛЮЧ, КОТОРЫЙ ОБХОДИТ ЗАЩИТУ
 	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 	if (!botToken || !supabaseUrl || !supabaseKey || !initData) {
-		return res.status(500).json({ error: 'Server configuration error' })
+		return res.status(500).json({ error: 'Ошибка конфигурации сервера' })
 	}
 
-	// 1. ПРОВЕРКА ПОДПИСИ TELEGRAM
 	const params = new URLSearchParams(initData)
 	const hash = params.get('hash')
 	params.delete('hash')
@@ -36,23 +34,37 @@ export default async function handler(req, res) {
 	}
 
 	const user = JSON.parse(params.get('user'))
-
-	// 2. ЗАПИСЬ В БАЗУ (через серверный ключ)
 	const supabase = createClient(supabaseUrl, supabaseKey)
 
-	// Сначала убеждаемся, что юзер есть (upsert)
-	await supabase.from('users').upsert({
-		id: user.id,
-		first_name: user.first_name || 'Пользователь'
-	})
+	try {
+		// ЗАЩИТА ОТ СПАМА (3 секунды)
+		const { data: lastLog } = await supabase
+			.from('water_logs')
+			.select('logged_at')
+			.eq('user_id', user.id)
+			.order('logged_at', { ascending: false })
+			.limit(1)
+			.maybeSingle()
 
-	// Вызываем функцию добавления воды
-	const { error } = await supabase.rpc('record_water_log', {
-		p_user_id: user.id,
-		p_amount_ml: Number(amount)
-	})
+		if (lastLog) {
+			const lastTime = new Date(lastLog.logged_at).getTime()
+			const now = new Date().getTime()
+			if (now - lastTime < 3000) {
+				throw new Error(
+					'Не так быстро! Подождите пару секунд перед добавлением.'
+				)
+			}
+		}
 
-	if (error) return res.status(400).json({ error: error.message })
+		// Запись воды
+		const { error } = await supabase.rpc('record_water_log', {
+			p_user_id: user.id,
+			p_amount_ml: Number(amount)
+		})
 
-	res.status(200).json({ ok: true })
+		if (error) throw error
+		res.status(200).json({ ok: true })
+	} catch (err) {
+		res.status(400).json({ error: err.message })
+	}
 }
