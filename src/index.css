@@ -1,12 +1,18 @@
 * {
 	box-sizing: border-box;
 }
+html,
 body {
 	margin: 0;
-	min-width: 320px;
-	font-family: Arial, sans-serif;
+	padding: 0;
+	width: 100%;
+	-webkit-text-size-adjust: 100%; /* Защита от автозума текста на iPhone */
+}
+
+body {
 	background: #e2e8f0;
-	/* Убрали display: flex, чтобы не ломать скролл на телефонах */
+	font-family: Arial, sans-serif;
+	min-width: 320px;
 }
 
 button,
@@ -29,16 +35,16 @@ body {
 .water-app {
 	width: 100%;
 	max-width: 620px;
-	min-height: calc(100vh - 40px);
-	margin: 20px auto; /* Центрируем на ПК */
+	min-height: 100vh; /* На телефоне будет на весь экран */
+	margin: 20px auto;
 	padding: 24px 18px 120px;
 	color: #142b4a;
 	background: #eef5fb;
 	border-radius: 30px;
 	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
 	position: relative;
+	overflow-x: hidden; /* Вот тут запрещаем горизонтальный скролл */
 }
-
 @media (max-width: 768px) {
 	body {
 		background: #eef5fb;
