@@ -7,10 +7,9 @@ import {
 	addWaterToDb,
 	deleteLogFromDb,
 	getLast7DaysTotal,
-	sendFamilyRequest,
-	getFamilyData,
-	respondToRequest,
-	removeFamilyLink
+	createFamily,
+	getMyFamilies,
+	inviteToFamily
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -32,12 +31,14 @@ const todayKey = () => {
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
 
-	// Состояния
+	// Состояния профиля и воды
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
 	const [chartTotals, setChartTotals] = useState({})
 	const [isLoading, setIsLoading] = useState(true)
 	const [isAdding, setIsAdding] = useState(false)
+
+	// Состояния интерфейса
 	const [tab, setTab] = useState('today')
 	const [customAmount, setCustomAmount] = useState('')
 	const [showCustom, setShowCustom] = useState(false)
@@ -47,19 +48,13 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
-	// Стейты награды
+	// Награда
 	const [showReward, setShowReward] = useState(false)
 	const [diamondPop, setDiamondPop] = useState(false)
 	const diamondTargetRef = useRef(null)
 
-	// Стейты семьи
-	const [familyData, setFamilyData] = useState({
-		members: [],
-		incoming: [],
-		outgoing: []
-	})
-	const [inputId, setInputId] = useState('')
-	const [familyMsg, setFamilyMsg] = useState('')
+	// Семейные группы (НОВОЕ)
+	const [families, setFamilies] = useState([])
 	const [familyLoading, setFamilyLoading] = useState(false)
 
 	// Логика свайпов
@@ -155,9 +150,9 @@ function MainScreen() {
 		return 0
 	}, [profile, today])
 
-	const loadFamily = async () => {
-		const fData = await getFamilyData(userId, today)
-		setFamilyData(fData)
+	const loadFamilies = async () => {
+		const fams = await getMyFamilies(userId)
+		setFamilies(fams)
 	}
 
 	useEffect(() => {
@@ -166,6 +161,7 @@ function MainScreen() {
 				const dbProfile = await getUserProfile(userId)
 				const dbLogs = await getTodayLogs(userId, today)
 				const totals7Days = await getLast7DaysTotal(userId)
+
 				if (dbProfile) setProfile(dbProfile)
 				else
 					setProfile(
@@ -175,9 +171,10 @@ function MainScreen() {
 							water_goal_ml: 2100
 						}
 					)
+
 				setLogs(dbLogs)
 				setChartTotals(totals7Days)
-				await loadFamily()
+				await loadFamilies()
 			} catch (err) {
 				console.error('Ошибка загрузки:', err)
 			} finally {
@@ -189,9 +186,9 @@ function MainScreen() {
 
 	useEffect(() => {
 		if (tab === 'family' && !isLoading) {
-			loadFamily()
+			loadFamilies()
 			const interval = setInterval(() => {
-				loadFamily()
+				loadFamilies()
 			}, 15000)
 			return () => clearInterval(interval)
 		}
@@ -230,6 +227,7 @@ function MainScreen() {
 			const updatedProfile = await getUserProfile(userId)
 			const updatedLogs = await getTodayLogs(userId, today)
 			const totals7Days = await getLast7DaysTotal(userId)
+
 			setProfile(updatedProfile)
 			setLogs(updatedLogs)
 			setChartTotals(totals7Days)
@@ -332,33 +330,25 @@ function MainScreen() {
 				.then(() => alert(`ID скопирован: ${userId}`))
 	}
 
-	async function handleAddFamily(e) {
-		e.preventDefault()
-		if (!inputId.trim()) return
+	// НОВЫЕ ОБРАБОТЧИКИ ДЛЯ СЕМЬИ
+	async function handleCreateFamily(name) {
+		if (!name.trim()) return
 		setFamilyLoading(true)
-		setFamilyMsg('')
-		const res = await sendFamilyRequest(userId, Number(inputId))
-		if (res.error) setFamilyMsg(`❌ ${res.error}`)
+		const res = await createFamily(userId, name)
+		if (res.error) alert(res.error)
+		else await loadFamilies()
+		setFamilyLoading(false)
+	}
+
+	async function handleInvite(familyId, inviteeId) {
+		if (!inviteeId) return
+		setFamilyLoading(true)
+		const res = await inviteToFamily(familyId, Number(inviteeId))
+		if (res.error) alert(res.error)
 		else {
-			setFamilyMsg('✅ Запрос отправлен!')
-			setInputId('')
-			await loadFamily()
+			alert('Приглашение отправлено!')
+			await loadFamilies()
 		}
-		setFamilyLoading(false)
-	}
-
-	async function handleRespond(linkId, status) {
-		setFamilyLoading(true)
-		await respondToRequest(linkId, status)
-		await loadFamily()
-		setFamilyLoading(false)
-	}
-
-	async function handleRemoveFamily(memberId) {
-		if (!window.confirm('Точно удалить этого человека из семьи?')) return
-		setFamilyLoading(true)
-		await removeFamilyLink(userId, memberId)
-		await loadFamily()
 		setFamilyLoading(false)
 	}
 
@@ -468,15 +458,12 @@ function MainScreen() {
 				)}
 				{tab === 'family' && (
 					<FamilyTab
-						familyData={familyData}
+						userId={userId}
+						families={families}
 						shareId={shareId}
-						familyMsg={familyMsg}
-						handleRespond={handleRespond}
+						handleCreateFamily={handleCreateFamily}
+						handleInvite={handleInvite}
 						familyLoading={familyLoading}
-						handleRemoveFamily={handleRemoveFamily}
-						handleAddFamily={handleAddFamily}
-						inputId={inputId}
-						setInputId={setInputId}
 					/>
 				)}
 			</div>

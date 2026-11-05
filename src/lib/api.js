@@ -219,3 +219,111 @@ export async function removeFamilyLink(userId, memberId) {
 			`and(requester_id.eq.${userId},receiver_id.eq.${memberId}),and(requester_id.eq.${memberId},receiver_id.eq.${userId})`
 		)
 }
+// ==========================================
+// НОВАЯ ЛОГИКА: СЕМЕЙНЫЕ ГРУППЫ
+// ==========================================
+
+// Создать новую группу
+export async function createFamily(userId, familyName) {
+	if (!supabase) return
+
+	// Создаем группу
+	const { data: family, error } = await supabase
+		.from('families')
+		.insert({
+			name: familyName,
+			owner_id: userId
+		})
+		.select()
+		.single()
+
+	if (error) return { error: error.message }
+
+	// Сразу добавляем создателя в группу как 'owner' (принятого)
+	await supabase.from('family_members').insert({
+		family_id: family.id,
+		user_id: userId,
+		role: 'owner',
+		status: 'accepted'
+	})
+
+	return { success: true, familyId: family.id }
+}
+
+// Получить мои группы и участников в них
+export async function getMyFamilies(userId) {
+	if (!supabase) return []
+
+	// 1. Находим группы, где я состою (и принят)
+	const { data: myMemberships } = await supabase
+		.from('family_members')
+		.select('family_id')
+		.eq('user_id', userId)
+		.eq('status', 'accepted')
+
+	if (!myMemberships || myMemberships.length === 0) return []
+	const familyIds = myMemberships.map(m => m.family_id)
+
+	// 2. Загружаем группы
+	const { data: families } = await supabase
+		.from('families')
+		.select('*')
+		.in('id', familyIds)
+
+	// 3. Загружаем всех участников этих групп
+	const { data: allMembers } = await supabase
+		.from('family_members')
+		.select('*')
+		.in('family_id', familyIds)
+
+	// 4. Загружаем профили этих людей
+	const allUserIds = allMembers
+		? [...new Set(allMembers.map(m => m.user_id))]
+		: []
+	const { data: profiles } = await supabase
+		.from('users')
+		.select('*')
+		.in('id', allUserIds)
+
+	// Собираем всё воедино
+	return (families || []).map(fam => {
+		const members = (allMembers || [])
+			.filter(m => m.family_id === fam.id)
+			.map(m => {
+				const prof = (profiles || []).find(p => p.id === m.user_id)
+				return {
+					...m,
+					first_name: prof?.first_name || 'Пользователь'
+				}
+			})
+		return {
+			...fam,
+			members
+		}
+	})
+}
+
+// Пригласить человека в группу
+export async function inviteToFamily(familyId, userId) {
+	if (!supabase) return
+	// Проверяем, есть ли уже такой участник
+	const { data: existing } = await supabase
+		.from('family_members')
+		.select('status')
+		.eq('family_id', familyId)
+		.eq('user_id', userId)
+		.maybeSingle()
+
+	if (existing)
+		return { error: 'Этот человек уже в группе или ждет подтверждения' }
+
+	const { error } = await supabase.from('family_members').insert({
+		family_id: familyId,
+		user_id: userId,
+		role: 'member',
+		status: 'pending'
+	})
+
+	if (error) return { error: error.message }
+	return { success: true }
+}
