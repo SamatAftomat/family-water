@@ -6,15 +6,21 @@ body {
 	min-width: 320px;
 	font-family: Arial, sans-serif;
 	background: #e2e8f0;
-	display: flex;
-	justify-content: center;
-	align-items: flex-start;
-	padding-top: 20px;
+	/* Убрали display: flex, чтобы не ломать скролл на телефонах */
 }
 
 button,
 input {
 	font: inherit;
+}
+
+/* Защита от горизонтального зума/скролла без вреда для вертикального */
+html,
+body {
+	overflow-x: clip !important; /* clip не создает скролл-контейнер, в отличие от hidden */
+	width: 100%;
+	max-width: 100vw;
+	-webkit-text-size-adjust: 100% !important;
 }
 
 /* ==========================================
@@ -24,24 +30,24 @@ input {
 	width: 100%;
 	max-width: 620px;
 	min-height: calc(100vh - 40px);
+	margin: 20px auto; /* Центрируем на ПК */
 	padding: 24px 18px 120px;
 	color: #142b4a;
 	background: #eef5fb;
 	border-radius: 30px;
 	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-	overflow-x: hidden !important;
 	position: relative;
 }
 
 @media (max-width: 768px) {
 	body {
-		padding-top: 0;
 		background: #eef5fb;
 	}
 	.water-app {
 		min-height: 100vh;
 		border-radius: 0;
 		box-shadow: none;
+		margin: 0 auto;
 	}
 }
 
@@ -652,7 +658,7 @@ input {
 	background: #267aab;
 }
 
-/* Оптимизация свайпов (GPU acceleration) */
+/* Оптимизация свайпов */
 .swipe-container {
 	width: 100%;
 	touch-action: pan-y;
@@ -814,13 +820,4 @@ input {
 }
 .dark-theme .btn-unlink {
 	color: #f87171;
-}
-
-/* Защита от зума на мобильных */
-html,
-body {
-	overflow-x: hidden !important;
-	width: 100%;
-	max-width: 100vw;
-	-webkit-text-size-adjust: 100% !important;
 }

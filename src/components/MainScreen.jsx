@@ -51,7 +51,6 @@ function MainScreen() {
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family']
 
-	// Плавная анимация через нативный Web Animations API
 	const animateSlide = direction => {
 		if (!containerRef.current) return
 		const translateFrom = direction === 'left' ? 40 : -40
@@ -71,7 +70,6 @@ function MainScreen() {
 	const goToTab = (newTab, direction = 'fade') => {
 		if (newTab === tab) return
 		setTab(newTab)
-
 		if (direction !== 'fade') {
 			requestAnimationFrame(() => animateSlide(direction))
 		} else {
@@ -88,7 +86,6 @@ function MainScreen() {
 		}
 	}
 
-	// Нативные passive-обработчики для 60 FPS свайпов
 	useEffect(() => {
 		const el = containerRef.current
 		if (!el) return
@@ -104,7 +101,6 @@ function MainScreen() {
 
 		const handleEnd = () => {
 			if (!touchStart.current.x || !touchEnd.current.x) return
-
 			const deltaX = touchStart.current.x - touchEnd.current.x
 			const deltaY = touchStart.current.y - touchEnd.current.y
 
@@ -112,7 +108,6 @@ function MainScreen() {
 			if (Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return
 
 			const currentIndex = tabsOrder.indexOf(tab)
-
 			if (deltaX > 0 && currentIndex < tabsOrder.length - 1) {
 				goToTab(tabsOrder[currentIndex + 1], 'left')
 			} else if (deltaX < 0 && currentIndex > 0) {
