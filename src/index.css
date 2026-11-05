@@ -92,7 +92,7 @@ input {
 }
 
 /* ==========================================
-   ВЕРХНЯЯ СТАТИСТИКА (АЛМАЗЫ И Т.Д.)
+   ВЕРХНЯЯ СТАТИСТИКА
    ========================================== */
 .compact-stats {
 	display: grid;
@@ -379,7 +379,7 @@ input {
 }
 
 /* ==========================================
-   АНАЛИТИКА (ИДЕАЛЬНЫЙ ГРАФИК)
+   АНАЛИТИКА (ГРАФИК)
    ========================================== */
 .chart-container {
 	position: relative;
@@ -392,8 +392,6 @@ input {
 	margin-bottom: 16px;
 	box-shadow: 0 4px 12px rgba(25, 64, 97, 0.06);
 }
-
-/* Линия цели */
 .chart-line {
 	position: absolute;
 	top: 30px;
@@ -413,8 +411,6 @@ input {
 	padding: 0 4px;
 	border-radius: 4px;
 }
-
-/* Сетка графика */
 .chart-grid {
 	display: flex;
 	justify-content: space-between;
@@ -422,8 +418,6 @@ input {
 	position: relative;
 	z-index: 2;
 }
-
-/* Колонка одного дня */
 .chart-day {
 	flex: 1;
 	display: flex;
@@ -432,8 +426,6 @@ input {
 	justify-content: flex-end;
 	height: 100%;
 }
-
-/* Обертка для столбика (прижимает его к низу) */
 .chart-bar-wrap {
 	flex: 1;
 	width: 100%;
@@ -441,23 +433,18 @@ input {
 	align-items: flex-end;
 	justify-content: center;
 }
-
-/* Сам столбик */
 .chart-bar {
 	width: 100%;
 	max-width: 24px;
 	border-radius: 6px 6px 0 0;
 	transition: height 0.3s ease;
 }
-
-/* Подпись дня (Чт, Пт и т.д.) */
 .chart-day-label {
 	margin-top: 8px;
 	font-size: 11px;
 	color: #71869d;
 	text-align: center;
 }
-
 .analytics-summary {
 	display: flex;
 	justify-content: space-between;
@@ -548,7 +535,6 @@ input {
 	margin-left: auto;
 	border-radius: 50%;
 }
-
 .family-form {
 	display: flex;
 	gap: 8px;
@@ -581,7 +567,6 @@ input {
 	cursor: pointer;
 	box-sizing: border-box;
 }
-
 .family-request-card {
 	background: #fff;
 	border-radius: 16px;
@@ -621,7 +606,7 @@ input {
 }
 
 /* ==========================================
-   НИЖНЯЯ НАВИГАЦИЯ И АНИМАЦИИ
+   НИЖНЯЯ НАВИГАЦИЯ
    ========================================== */
 .bottom-nav {
 	position: fixed;
@@ -667,49 +652,13 @@ input {
 	background: #267aab;
 }
 
+/* Оптимизация свайпов (GPU acceleration) */
 .swipe-container {
 	width: 100%;
 	touch-action: pan-y;
 	will-change: transform, opacity;
-}
-.slide-left {
-	animation: slideLeft 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-@keyframes slideLeft {
-	from {
-		opacity: 0;
-		transform: translateX(40px);
-	}
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
-}
-.slide-right {
-	animation: slideRight 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-@keyframes slideRight {
-	from {
-		opacity: 0;
-		transform: translateX(-40px);
-	}
-	to {
-		opacity: 1;
-		transform: translateX(0);
-	}
-}
-.slide-fade {
-	animation: fadeIn 0.25s ease-out forwards;
-}
-@keyframes fadeIn {
-	from {
-		opacity: 0;
-		transform: scale(0.98);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1);
-	}
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
 }
 
 /* ==========================================
@@ -874,11 +823,4 @@ body {
 	width: 100%;
 	max-width: 100vw;
 	-webkit-text-size-adjust: 100% !important;
-}
-.swipe-container {
-	width: 100%;
-	touch-action: pan-y;
-	will-change: transform, opacity;
-	backface-visibility: hidden; /* Сглаживает анимации на Android */
-	-webkit-backface-visibility: hidden;
 }

@@ -51,7 +51,7 @@ function MainScreen() {
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family']
 
-	// Плавная анимация через нативный Web Animations API (не грузит React)
+	// Плавная анимация через нативный Web Animations API
 	const animateSlide = direction => {
 		if (!containerRef.current) return
 		const translateFrom = direction === 'left' ? 40 : -40
@@ -71,11 +71,10 @@ function MainScreen() {
 	const goToTab = (newTab, direction = 'fade') => {
 		if (newTab === tab) return
 		setTab(newTab)
+
 		if (direction !== 'fade') {
-			// Даем React отрисовать новый контент и сразу анимируем
 			requestAnimationFrame(() => animateSlide(direction))
 		} else {
-			// Плавное появление для кнопок меню
 			requestAnimationFrame(() => {
 				if (!containerRef.current) return
 				containerRef.current.animate(
@@ -109,9 +108,8 @@ function MainScreen() {
 			const deltaX = touchStart.current.x - touchEnd.current.x
 			const deltaY = touchStart.current.y - touchEnd.current.y
 
-			// Свайп должен быть горизонтальным и явным
 			if (Math.abs(deltaX) < minSwipeDistance) return
-			if (Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return // Игнорируем если больше вертикальный скролл
+			if (Math.abs(deltaX) < Math.abs(deltaY) * 1.5) return
 
 			const currentIndex = tabsOrder.indexOf(tab)
 
@@ -122,7 +120,6 @@ function MainScreen() {
 			}
 		}
 
-		// passive: true — браузер не ждет JS, скролл и свайпы не лагают
 		el.addEventListener('touchstart', handleStart, { passive: true })
 		el.addEventListener('touchmove', handleMove, { passive: true })
 		el.addEventListener('touchend', handleEnd, { passive: true })
