@@ -14,7 +14,9 @@ import {
 	getMyInvites,
 	deleteFamily,
 	kickFromFamily,
-	renameFamily
+	renameFamily,
+	clearTodayLogs,
+	updateProfileDb
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -39,6 +41,7 @@ function MainScreen() {
 	const [logs, setLogs] = useState([])
 	const [chartTotals, setChartTotals] = useState({})
 	const [isLoading, setIsLoading] = useState(true)
+	const [loadError, setLoadError] = useState(false) // Стейт для ошибки
 	const [isAdding, setIsAdding] = useState(false)
 
 	const [tab, setTab] = useState('today')
@@ -157,32 +160,45 @@ function MainScreen() {
 		setInvites(invs)
 	}
 
-	useEffect(() => {
-		async function loadData() {
-			try {
-				const dbProfile = await getUserProfile(userId)
-				const dbLogs = await getTodayLogs(userId, today)
-				const totals7Days = await getLast7DaysTotal(userId)
+	const loadData = async () => {
+		setIsLoading(true)
+		setLoadError(false)
 
-				if (dbProfile) setProfile(dbProfile)
-				else
-					setProfile(
-						JSON.parse(localStorage.getItem('family-water-profile')) || {
-							first_name: 'Пользователь',
-							weight_kg: 70,
-							water_goal_ml: 2100
-						}
-					)
+		// Таймаут на 5 секунд
+		const timeout = setTimeout(() => {
+			setLoadError(true)
+			setIsLoading(false)
+		}, 5000)
 
-				setLogs(dbLogs)
-				setChartTotals(totals7Days)
-				await loadFamilies()
-			} catch (err) {
-				console.error('Ошибка загрузки:', err)
-			} finally {
-				setIsLoading(false)
-			}
+		try {
+			const dbProfile = await getUserProfile(userId)
+			const dbLogs = await getTodayLogs(userId, today)
+			const totals7Days = await getLast7DaysTotal(userId)
+
+			if (dbProfile) setProfile(dbProfile)
+			else
+				setProfile(
+					JSON.parse(localStorage.getItem('family-water-profile')) || {
+						first_name: 'Пользователь',
+						weight_kg: 70,
+						water_goal_ml: 2100
+					}
+				)
+
+			setLogs(dbLogs)
+			setChartTotals(totals7Days)
+			await loadFamilies()
+
+			clearTimeout(timeout)
+		} catch (err) {
+			console.error('Ошибка загрузки:', err)
+			setLoadError(true)
+		} finally {
+			setIsLoading(false)
 		}
+	}
+
+	useEffect(() => {
 		loadData()
 	}, [userId, today])
 
@@ -238,7 +254,7 @@ function MainScreen() {
 				JSON.stringify(updatedProfile)
 			)
 		} catch (err) {
-			alert('Ошибка сохранения: ' + err.message)
+			alert('Ошибка при добавлении воды: ' + err.message)
 		} finally {
 			setIsAdding(false)
 			setCustomAmount('')
@@ -279,7 +295,6 @@ function MainScreen() {
 		setChartTotals(await getLast7DaysTotal(userId))
 	}
 
-	// 3. Замени функцию clearAllLogs:
 	async function clearAllLogs() {
 		if (!window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?'))
 			return
@@ -289,7 +304,6 @@ function MainScreen() {
 		setChartTotals(await getLast7DaysTotal(userId))
 	}
 
-	// 4. Замени функцию saveSettings:
 	async function saveSettings(event) {
 		event.preventDefault()
 		const form = new FormData(event.currentTarget)
@@ -305,9 +319,9 @@ function MainScreen() {
 		}
 		setProfile(updated)
 		localStorage.setItem('family-water-profile', JSON.stringify(updated))
+		setSettings(false)
 
 		await updateProfileDb(name, weight)
-		setSettings(false)
 	}
 
 	function shareId() {
@@ -356,7 +370,6 @@ function MainScreen() {
 		setFamilyLoading(false)
 	}
 
-	// НОВЫЕ ОБРАБОТЧИКИ
 	async function handleDeleteFamily(familyId) {
 		setFamilyLoading(true)
 		await deleteFamily(familyId)
@@ -395,6 +408,39 @@ function MainScreen() {
 
 	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
 	const weekAverage = Math.round(weekTotal / 7)
+
+	// ЭКРАН ОШИБКИ
+	if (loadError) {
+		return (
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					justifyContent: 'center',
+					alignItems: 'center',
+					height: '100vh',
+					background: isDark ? '#0f172a' : '#eef5fb',
+					color: isDark ? '#fff' : '#12355b',
+					padding: '20px',
+					textAlign: 'center'
+				}}
+			>
+				<div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>
+				<h2 style={{ marginBottom: '12px' }}>Ошибка соединения</h2>
+				<p style={{ fontSize: '14px', color: '#71869d', marginBottom: '24px' }}>
+					Не удалось загрузить данные. Проверьте интернет или перезайдите в
+					приложение.
+				</p>
+				<button
+					onClick={loadData}
+					className="primary-action"
+					style={{ maxWidth: '200px' }}
+				>
+					Попробовать снова
+				</button>
+			</div>
+		)
+	}
 
 	if (isLoading)
 		return (
@@ -464,6 +510,7 @@ function MainScreen() {
 						setCustomAmount={setCustomAmount}
 						removeLog={removeLog}
 						goToTab={goToTab}
+						invites={invites}
 					/>
 				)}
 				{tab === 'diary' && (
@@ -518,11 +565,13 @@ function MainScreen() {
 					label="Аналитика"
 					onClick={() => goToTab('analytics')}
 				/>
+				{/* ПЕРЕДАЕМ БЕЙДЖ В КНОПКУ СЕМЬИ */}
 				<NavButton
 					active={tab === 'family'}
 					icon="♧"
 					label="Семья"
 					onClick={() => goToTab('family')}
+					badge={invites.length}
 				/>
 			</nav>
 

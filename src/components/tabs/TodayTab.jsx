@@ -12,10 +12,43 @@ export default function TodayTab({
 	customAmount,
 	setCustomAmount,
 	removeLog,
-	goToTab
+	goToTab,
+	invites
 }) {
 	return (
 		<>
+			{/* БАННЕР ПРИГЛАШЕНИЯ */}
+			{invites && invites.length > 0 && (
+				<div
+					onClick={() => goToTab('family')}
+					style={{
+						background: '#fff3e0',
+						border: '1px solid #ffe0b2',
+						padding: '16px',
+						borderRadius: '16px',
+						marginBottom: '16px',
+						cursor: 'pointer',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between'
+					}}
+				>
+					<div>
+						<div
+							style={{ fontWeight: 'bold', color: '#e65c00', fontSize: '15px' }}
+						>
+							Вас приглашают в семью! 💌
+						</div>
+						<div
+							style={{ fontSize: '13px', color: '#d84315', marginTop: '4px' }}
+						>
+							Нажмите, чтобы посмотреть
+						</div>
+					</div>
+					<div style={{ fontSize: '24px' }}>👉</div>
+				</div>
+			)}
+
 			<section className="progress-card">
 				<div className="progress-ring">
 					<svg viewBox="0 0 120 120">
