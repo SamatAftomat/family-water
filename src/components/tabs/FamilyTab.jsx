@@ -6,16 +6,87 @@ export default function FamilyTab({
 	shareId,
 	handleCreateFamily,
 	handleInvite,
-	handleRespond,
 	familyLoading
 }) {
 	const [newFamilyName, setNewFamilyName] = useState('')
 	const [inviteId, setInviteId] = useState('')
 	const [selectedFamily, setSelectedFamily] = useState(null)
+	const [copySuccess, setCopySuccess] = useState(false)
+
+	const copyToClipboard = () => {
+		navigator.clipboard
+			.writeText(userId.toString())
+			.then(() => {
+				setCopySuccess(true)
+				setTimeout(() => setCopySuccess(false), 2000)
+			})
+			.catch(() => {
+				alert('Не удалось скопировать. Ваш ID: ' + userId)
+			})
+	}
 
 	return (
 		<section className="section-block page-block">
 			<p className="eyebrow">ВМЕСТЕ ЛЕГЧЕ</p>
+
+			{/* --- ВЕРНУЛИ БЛОК С ID --- */}
+			<div
+				style={{
+					background: 'rgba(23, 63, 112, 0.05)',
+					padding: '16px',
+					borderRadius: '16px',
+					marginBottom: '20px',
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '12px'
+				}}
+			>
+				<div style={{ fontSize: '13px', color: '#71869d' }}>
+					Твой Telegram ID:
+				</div>
+				<div
+					style={{
+						fontSize: '24px',
+						fontWeight: '800',
+						color: '#173f70',
+						letterSpacing: '2px',
+						textAlign: 'center'
+					}}
+				>
+					{userId}
+				</div>
+
+				<button
+					onClick={copyToClipboard}
+					style={{
+						background: copySuccess ? '#0ba360' : '#173f70',
+						color: '#fff',
+						border: 'none',
+						padding: '12px',
+						borderRadius: '12px',
+						fontWeight: 'bold',
+						cursor: 'pointer',
+						transition: 'background 0.2s'
+					}}
+				>
+					{copySuccess ? '✅ Скопировано!' : '📋 Скопировать ID'}
+				</button>
+
+				<button
+					onClick={shareId}
+					style={{
+						background: 'transparent',
+						color: '#1886ad',
+						border: '1px solid #1886ad',
+						padding: '12px',
+						borderRadius: '12px',
+						fontWeight: 'bold',
+						cursor: 'pointer'
+					}}
+				>
+					↗ Отправить в Telegram
+				</button>
+			</div>
 
 			{/* Мои группы */}
 			<h2>Мои группы</h2>
@@ -42,7 +113,6 @@ export default function FamilyTab({
 							</button>
 						</div>
 
-						{/* Список участников группы */}
 						<div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
 							{fam.members
 								.filter(m => m.status === 'accepted')
@@ -128,12 +198,12 @@ export default function FamilyTab({
 							fontWeight: 'bold'
 						}}
 					>
-						Создать
+						{familyLoading ? '...' : 'Создать'}
 					</button>
 				</form>
 			</div>
 
-			{/* Форма приглашения (появляется при клике на "+ Пригласить") */}
+			{/* Модалка приглашения */}
 			{selectedFamily && (
 				<div
 					className="modal-backdrop"
