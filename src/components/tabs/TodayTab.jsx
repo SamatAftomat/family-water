@@ -1,0 +1,148 @@
+import LogRow from '../LogRow'
+
+export default function TodayTab({
+	total,
+	goal,
+	progress,
+	logs,
+	addWater,
+	isAdding,
+	showCustom,
+	setShowCustom,
+	customAmount,
+	setCustomAmount,
+	removeLog,
+	goToTab
+}) {
+	return (
+		<>
+			<section className="progress-card">
+				<div className="progress-ring">
+					<svg viewBox="0 0 120 120">
+						<defs>
+							<linearGradient
+								id="ringGradient"
+								x1="0%"
+								y1="0%"
+								x2="100%"
+								y2="100%"
+							>
+								<stop
+									offset="0%"
+									stopColor="#ffffff"
+									stopOpacity="1"
+								/>
+								<stop
+									offset="100%"
+									stopColor="#a0e0ff"
+									stopOpacity="0.9"
+								/>
+							</linearGradient>
+						</defs>
+						<circle
+							className="ring-track"
+							cx="60"
+							cy="60"
+							r="50"
+							pathLength="100"
+						/>
+						<circle
+							className="ring-value"
+							cx="60"
+							cy="60"
+							r="50"
+							pathLength="100"
+							stroke="url(#ringGradient)"
+							style={{ strokeDasharray: `${progress} 100` }}
+						/>
+					</svg>
+					<div className="ring-center">
+						<strong>{total}</strong>
+						<small>из {goal} мл</small>
+					</div>
+				</div>
+				<div className="progress-copy">
+					<span>Выпито сегодня</span>
+					<strong>{total} мл</strong>
+					<small>
+						{goal - total > 0
+							? `Осталось ${goal - total} мл`
+							: 'Норма выполнена!'}
+					</small>
+				</div>
+				<div className="water-actions">
+					<button
+						className="water-button water-button-blue"
+						onClick={() => addWater(100)}
+						disabled={isAdding}
+					>
+						+100
+					</button>
+					<button
+						className="water-button water-button-cyan"
+						onClick={() => addWater(200)}
+						disabled={isAdding}
+					>
+						+200
+					</button>
+					<button
+						className="water-button water-button-green"
+						onClick={() => addWater(300)}
+						disabled={isAdding}
+					>
+						+300
+					</button>
+				</div>
+				<button
+					className="custom-water"
+					onClick={() => setShowCustom(!showCustom)}
+				>
+					{showCustom ? '✕ Скрыть' : '＋ Другое количество'}
+				</button>
+				{showCustom && (
+					<div className="custom-form">
+						<input
+							type="text"
+							inputMode="numeric"
+							pattern="[0-9]*"
+							value={customAmount}
+							onChange={e => setCustomAmount(e.target.value.replace(/\D/g, ''))}
+							autoFocus
+						/>
+						<button
+							onClick={() => addWater(customAmount)}
+							disabled={isAdding}
+						>
+							Добавить
+						</button>
+					</div>
+				)}
+			</section>
+
+			<section className="section-block">
+				<div className="section-heading">
+					<h2>Последние записи</h2>
+					<button
+						className="link-button"
+						onClick={() => goToTab('diary')}
+					>
+						Все записи
+					</button>
+				</div>
+				{logs.length === 0 ? (
+					<p className="empty-note">Добавь первый стакан воды за сегодня.</p>
+				) : (
+					<div className="log-list">
+						{logs.slice(0, 4).map(log => (
+							<LogRow
+								key={log.id}
+								log={log}
+								onRemove={removeLog}
+							/>
+						))}
+					</div>
+				)}
+			</section>
+		</>
+	)
+}
