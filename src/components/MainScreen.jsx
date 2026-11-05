@@ -12,7 +12,7 @@ import {
 	removeFamilyLink
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
-
+import confetti from 'canvas-confetti'
 const todayKey = () => {
 	const d = new Date()
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -199,6 +199,28 @@ function MainScreen() {
 		if (total + value > 5000)
 			return alert('Вы превысили суточный лимит в 5000 мл!')
 
+		// Проверяем, выполнили ли мы норму именно СЕЙЧАС
+		const wasComplete = total >= goal
+		const isCompleteNow = total + value >= goal
+
+		// Если только что выполнили — запускаем фейерверк!
+		if (!wasComplete && isCompleteNow) {
+			// Вибро-отклик (если в Telegram)
+			if (window.Telegram?.WebApp?.HapticFeedback) {
+				window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
+			}
+
+			// Сам фейерверк (стреляет с двух сторон)
+			confetti({
+				particleCount: 150,
+				spread: 70,
+				origin: { y: 0.6 },
+				colors: ['#0ba360', '#3cba92', '#25b2c1', '#4facfe', '#ffffff']
+			})
+
+			// Показываем модалку с наградой (нам понадобится новый стейт)
+			setShowReward(true)
+		}
 		setIsAdding(true)
 		try {
 			await addWaterToDb(userId, value, profile)
@@ -372,7 +394,6 @@ function MainScreen() {
 					⚙
 				</button>
 			</header>
-
 			<section className="compact-stats">
 				<div onClick={() => setActiveInfo('diamonds')}>
 					<span>✦</span>
@@ -387,7 +408,6 @@ function MainScreen() {
 					<strong>{progress}%</strong>
 				</div>
 			</section>
-
 			<div
 				className="swipe-container"
 				ref={containerRef}
@@ -777,7 +797,6 @@ function MainScreen() {
 					</section>
 				)}
 			</div>
-
 			<nav className="bottom-nav">
 				<NavButton
 					active={tab === 'today'}
@@ -804,7 +823,6 @@ function MainScreen() {
 					onClick={() => goToTab('family')}
 				/>
 			</nav>
-
 			{settings && (
 				<div
 					className="modal-backdrop"
@@ -868,7 +886,6 @@ function MainScreen() {
 					</form>
 				</div>
 			)}
-
 			{activeInfo && (
 				<div
 					className="modal-backdrop"
@@ -927,6 +944,33 @@ function MainScreen() {
 								</p>
 							</>
 						)}
+					</div>
+				</div>
+			)}{' '}
+			{showReward && (
+				<div
+					className="modal-backdrop"
+					onClick={() => setShowReward(false)}
+				>
+					<div
+						className="reward-modal"
+						onClick={e => e.stopPropagation()}
+					>
+						<div className="reward-icon">🏆</div>
+						<h2>Норма выполнена!</h2>
+						<p>Ты выпил свою норму воды. Так держать!</p>
+
+						<div className="reward-diamonds">
+							<span>✦ +1 Алмаз</span>
+							<span>🔥 Стрик продлен</span>
+						</div>
+
+						<button
+							className="primary-action"
+							onClick={() => setShowReward(false)}
+						>
+							Забрать награду
+						</button>
 					</div>
 				</div>
 			)}

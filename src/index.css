@@ -666,7 +666,7 @@ body {
 
 /* Оптимизация свайпов */
 .swipe-container {
-  width: 100%;
+	width: 100%;
 }
 
 /* ==========================================
@@ -822,4 +822,77 @@ body {
 }
 .dark-theme .btn-unlink {
 	color: #f87171;
+}
+.reward-modal {
+	background: #fff;
+	border-radius: 24px;
+	padding: 30px 20px;
+	text-align: center;
+	width: 90%;
+	max-width: 350px;
+	margin: auto;
+	animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes bounceIn {
+	0% {
+		transform: scale(0.5);
+		opacity: 0;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+.reward-icon {
+	font-size: 60px;
+	margin-bottom: 10px;
+	animation: pulse 2s infinite;
+}
+@keyframes pulse {
+	0% {
+		transform: scale(1);
+	}
+	50% {
+		transform: scale(1.1);
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+.reward-modal h2 {
+	color: #173f70;
+	margin: 0 0 8px;
+	font-size: 24px;
+}
+.reward-modal p {
+	color: #71869d;
+	margin: 0 0 20px;
+	font-size: 14px;
+}
+.reward-diamonds {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	background: #eef5fb;
+	padding: 16px;
+	border-radius: 16px;
+	font-weight: 700;
+	color: #173f70;
+	margin-bottom: 20px;
+}
+.reward-diamonds span:first-child {
+	color: #c49b00;
+	font-size: 18px;
+}
+.reward-diamonds span:last-child {
+	color: #e65c00;
+}
+.dark-theme .reward-modal {
+	background: #1e293b;
+}
+.dark-theme .reward-diamonds {
+	background: #0f172a;
+}
+.dark-theme .reward-modal h2 {
+	color: #f8fafc;
 }
