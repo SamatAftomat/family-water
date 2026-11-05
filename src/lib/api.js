@@ -30,9 +30,11 @@ export async function getTodayLogs(userId, dateStr) {
 	return (data || []).map(log => ({
 		id: log.id.toString(),
 		amount: log.amount_ml,
+		// ВОТ ЗДЕСЬ МЫ ДОБАВИЛИ ЧАСОВОЙ ПОЯС
 		time: new Date(log.logged_at).toLocaleTimeString('ru-RU', {
 			hour: '2-digit',
-			minute: '2-digit'
+			minute: '2-digit',
+			timeZone: 'Europe/Moscow'
 		}),
 		date: dateStr
 	}))
