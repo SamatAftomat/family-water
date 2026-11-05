@@ -17,7 +17,6 @@ export async function getUserProfile(userId) {
 export async function getTodayLogs(userId, dateStr) {
 	if (!supabase) return []
 
-	// Берем начало и конец дня по МСК
 	const startOfDay = new Date(`${dateStr}T00:00:00+03:00`)
 	const endOfDay = new Date(`${dateStr}T23:59:59.999+03:00`)
 
@@ -30,20 +29,25 @@ export async function getTodayLogs(userId, dateStr) {
 		.order('logged_at', { ascending: false })
 
 	return (data || []).map(log => {
-		// Берем время из базы (это UTC)
-		const dateObj = new Date(log.logged_at)
+		// Берем строку из базы
+		let rawDate = log.logged_at
 
-		// Принудительно прибавляем 3 часа (МСК)
-		const mskDate = new Date(dateObj.getTime() + 3 * 60 * 60 * 1000)
+		// Если в ней нет указания на часовой пояс, добавляем 'Z' (означает UTC)
+		if (!rawDate.includes('Z') && !rawDate.includes('+')) {
+			rawDate = rawDate.replace(' ', 'T') + 'Z'
+		}
 
-		// Форматируем в строку ЧЧ:ММ
-		const hours = String(mskDate.getUTCHours()).padStart(2, '0')
-		const minutes = String(mskDate.getUTCMinutes()).padStart(2, '0')
+		// Теперь браузер точно знает, что это UTC, и корректно переведет в МСК
+		const mskTime = new Date(rawDate).toLocaleTimeString('ru-RU', {
+			hour: '2-digit',
+			minute: '2-digit',
+			timeZone: 'Europe/Moscow'
+		})
 
 		return {
 			id: log.id.toString(),
 			amount: log.amount_ml,
-			time: `${hours}:${minutes}`, // Вот наше московское время
+			time: mskTime,
 			date: dateStr
 		}
 	})
