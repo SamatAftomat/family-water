@@ -13,6 +13,7 @@ export default async function handler(req, res) {
 		return res.status(500).json({ error: 'Ошибка конфигурации сервера' })
 	}
 
+	// 1. ПРОВЕРКА ПОДПИСИ TELEGRAM
 	const params = new URLSearchParams(initData)
 	const hash = params.get('hash')
 	params.delete('hash')
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
 	const supabase = createClient(supabaseUrl, supabaseKey)
 
 	try {
-		// ЗАЩИТА ОТ СПАМА (3 секунды)
+		// 2. ЗАЩИТА ОТ СПАМА (ПРОВЕРКА ПРОШЛОЙ ЗАПИСИ)
 		const { data: lastLog } = await supabase
 			.from('water_logs')
 			.select('logged_at')
@@ -47,22 +48,38 @@ export default async function handler(req, res) {
 			.maybeSingle()
 
 		if (lastLog) {
-			const lastTime = new Date(lastLog.logged_at).getTime()
-			const now = new Date().getTime()
-			if (now - lastTime < 3000) {
-				throw new Error(
-					'Не так быстро! Подождите пару секунд перед добавлением.'
-				)
+			let rawDate = lastLog.logged_at
+			if (!rawDate.includes('Z') && !rawDate.includes('+')) {
+				rawDate = rawDate.replace(' ', 'T') + 'Z'
+			}
+			const lastTime = new Date(rawDate).getTime()
+
+			// Если прошло меньше 2000 миллисекунд (2 секунды) — блокируем
+			if (Date.now() - lastTime < 2000) {
+				return res
+					.status(429)
+					.json({
+						error: 'Слишком часто! Подождите пару секунд перед добавлением.'
+					})
 			}
 		}
 
-		// Запись воды
+		// 3. УБЕЖДАЕМСЯ, ЧТО ПОЛЬЗОВАТЕЛЬ ЕСТЬ В БАЗЕ (upsert)
+		await supabase.from('users').upsert({
+			id: user.id,
+			first_name: user.first_name || 'Пользователь',
+			weight_kg: 70,
+			water_goal_ml: 2100
+		})
+
+		// 4. ЗАПИСЬ ВОДЫ
 		const { error } = await supabase.rpc('record_water_log', {
 			p_user_id: user.id,
 			p_amount_ml: Number(amount)
 		})
 
-		if (error) throw error
+		if (error) throw new Error(error.message)
+
 		res.status(200).json({ ok: true })
 	} catch (err) {
 		res.status(400).json({ error: err.message })

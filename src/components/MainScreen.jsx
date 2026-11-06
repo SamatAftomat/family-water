@@ -36,12 +36,13 @@ const todayKey = () => {
 
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
+	// ПРОВЕРКА: Запущено ли внутри Telegram
+	const isTelegram = !!window.Telegram?.WebApp?.initData
 
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
 	const [chartTotals, setChartTotals] = useState({})
 	const [isLoading, setIsLoading] = useState(true)
-	const [loadError, setLoadError] = useState(false) // Стейт для ошибки
 	const [isAdding, setIsAdding] = useState(false)
 
 	const [tab, setTab] = useState('today')
@@ -160,45 +161,32 @@ function MainScreen() {
 		setInvites(invs)
 	}
 
-	const loadData = async () => {
-		setIsLoading(true)
-		setLoadError(false)
-
-		// Таймаут на 5 секунд
-		const timeout = setTimeout(() => {
-			setLoadError(true)
-			setIsLoading(false)
-		}, 5000)
-
-		try {
-			const dbProfile = await getUserProfile(userId)
-			const dbLogs = await getTodayLogs(userId, today)
-			const totals7Days = await getLast7DaysTotal(userId)
-
-			if (dbProfile) setProfile(dbProfile)
-			else
-				setProfile(
-					JSON.parse(localStorage.getItem('family-water-profile')) || {
-						first_name: 'Пользователь',
-						weight_kg: 70,
-						water_goal_ml: 2100
-					}
-				)
-
-			setLogs(dbLogs)
-			setChartTotals(totals7Days)
-			await loadFamilies()
-
-			clearTimeout(timeout)
-		} catch (err) {
-			console.error('Ошибка загрузки:', err)
-			setLoadError(true)
-		} finally {
-			setIsLoading(false)
-		}
-	}
-
 	useEffect(() => {
+		async function loadData() {
+			try {
+				const dbProfile = await getUserProfile(userId)
+				const dbLogs = await getTodayLogs(userId, today)
+				const totals7Days = await getLast7DaysTotal(userId)
+
+				if (dbProfile) setProfile(dbProfile)
+				else
+					setProfile(
+						JSON.parse(localStorage.getItem('family-water-profile')) || {
+							first_name: 'Пользователь',
+							weight_kg: 70,
+							water_goal_ml: 2100
+						}
+					)
+
+				setLogs(dbLogs)
+				setChartTotals(totals7Days)
+				await loadFamilies()
+			} catch (err) {
+				console.error('Ошибка загрузки:', err)
+			} finally {
+				setIsLoading(false)
+			}
+		}
 		loadData()
 	}, [userId, today])
 
@@ -223,13 +211,12 @@ function MainScreen() {
 			return alert('Слишком много за один раз! Максимум 2000 мл.')
 		if (total + value > 5000)
 			return alert('Вы превысили суточный лимит в 5000 мл!')
-		if (isAdding) return // Защита от двойного клика
+		if (isAdding) return
 
-		// 1. СОХРАНЯЕМ СТАРОЕ СОСТОЯНИЕ (на случай, если сервер выдаст ошибку)
 		const previousLogs = [...logs]
 		const previousProfile = { ...profile }
 
-		// 2. МГНОВЕННО ОБНОВЛЯЕМ ЭКРАН (Оптимистичный UI)
+		// ОПТИМИСТИЧНЫЙ UI: Мгновенно показываем результат
 		const tempId = `temp-${Date.now()}`
 		const newLog = {
 			id: tempId,
@@ -245,11 +232,11 @@ function MainScreen() {
 		setLogs([newLog, ...logs])
 		setCustomAmount('')
 		setShowCustom(false)
-		setIsAdding(true) // Блокируем кнопки, пока идет запрос
+		setIsAdding(true)
 
-		// 3. ЗАПУСКАЕМ АНИМАЦИЮ НАГРАДЫ (если достигли цели)
 		const wasComplete = total >= goal
 		const isCompleteNow = total + value >= goal
+
 		if (!wasComplete && isCompleteNow) {
 			if (window.Telegram?.WebApp?.HapticFeedback)
 				window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
@@ -262,11 +249,8 @@ function MainScreen() {
 			setShowReward(true)
 		}
 
-		// 4. ОТПРАВЛЯЕМ В ФОНЕ НА СЕРВЕР
 		try {
 			await addWaterToDb(userId, value, profile)
-
-			// Синхронизируем с сервером (чтобы получить точные алмазы и стрик)
 			const updatedProfile = await getUserProfile(userId)
 			const updatedLogs = await getTodayLogs(userId, today)
 			const totals7Days = await getLast7DaysTotal(userId)
@@ -279,7 +263,7 @@ function MainScreen() {
 				JSON.stringify(updatedProfile)
 			)
 		} catch (err) {
-			// ОТКАТ ИЗМЕНЕНИЙ, ЕСЛИ СЕРВЕР ВЫДАЛ ОШИБКУ
+			// ОТКАТ, ЕСЛИ ОШИБКА
 			setLogs(previousLogs)
 			setProfile(previousProfile)
 			alert('Ошибка при добавлении воды: ' + err.message)
@@ -435,8 +419,8 @@ function MainScreen() {
 	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
 	const weekAverage = Math.round(weekTotal / 7)
 
-	// ЭКРАН ОШИБКИ
-	if (loadError) {
+	// ЭКРАН "МЕРТВОЙ СЕССИИ" (Если открыто не в Telegram)
+	if (!isTelegram) {
 		return (
 			<div
 				style={{
@@ -451,19 +435,35 @@ function MainScreen() {
 					textAlign: 'center'
 				}}
 			>
-				<div style={{ fontSize: '40px', marginBottom: '16px' }}>📡</div>
-				<h2 style={{ marginBottom: '12px' }}>Ошибка соединения</h2>
-				<p style={{ fontSize: '14px', color: '#71869d', marginBottom: '24px' }}>
-					Не удалось загрузить данные. Проверьте интернет или перезайдите в
-					приложение.
-				</p>
-				<button
-					onClick={loadData}
-					className="primary-action"
-					style={{ maxWidth: '200px' }}
+				<div style={{ fontSize: '50px', marginBottom: '16px' }}>🔒</div>
+				<h2 style={{ marginBottom: '12px', fontSize: '22px' }}>
+					Доступ ограничен
+				</h2>
+				<p
+					style={{
+						fontSize: '15px',
+						color: '#71869d',
+						marginBottom: '24px',
+						maxWidth: '300px',
+						lineHeight: '1.5'
+					}}
 				>
-					Попробовать снова
-				</button>
+					Это приложение работает только внутри Telegram. Пожалуйста, перейдите
+					в нашего бота и откройте его оттуда.
+				</p>
+				<a
+					href="https://t.me/family_waterBot"
+					target="_blank"
+					rel="noreferrer"
+					className="primary-action"
+					style={{
+						display: 'inline-block',
+						textDecoration: 'none',
+						maxWidth: '250px'
+					}}
+				>
+					Перейти в бота
+				</a>
 			</div>
 		)
 	}
@@ -591,7 +591,6 @@ function MainScreen() {
 					label="Аналитика"
 					onClick={() => goToTab('analytics')}
 				/>
-				{/* ПЕРЕДАЕМ БЕЙДЖ В КНОПКУ СЕМЬИ */}
 				<NavButton
 					active={tab === 'family'}
 					icon="♧"
