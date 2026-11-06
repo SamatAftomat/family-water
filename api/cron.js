@@ -7,7 +7,6 @@ import {
 } from './messages.js'
 
 export default async function handler(req, res) {
-	// 1. Проверка секретного ключа
 	const { searchParams } = new URL(
 		req.url,
 		`https://${req.headers.host || 'localhost'}`
@@ -20,7 +19,7 @@ export default async function handler(req, res) {
 
 	const botToken = process.env.TELEGRAM_BOT_TOKEN
 	const supabaseUrl = process.env.VITE_SUPABASE_URL
-	const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY // Используем серверный ключ
 
 	if (!botToken || !supabaseUrl || !supabaseKey) {
 		return res.status(500).json({ error: 'В Vercel не добавлены переменные!' })
@@ -29,76 +28,86 @@ export default async function handler(req, res) {
 	const supabase = createClient(supabaseUrl, supabaseKey)
 	const now = new Date()
 
-	// Переводим время в МСК (UTC+3)
-	const hour = (now.getUTCHours() + 3) % 24
-	const today = now.toISOString().slice(0, 10)
+	// Время по МСК
+	const moscowTime = new Date(now.getTime() + 3 * 60 * 60 * 1000)
+	const hour = moscowTime.getUTCHours()
 
-	// 2. Определяем время суток и выбираем пул сообщений
+	const today = moscowTime.toISOString().slice(0, 10)
+	const startOfDay = new Date(`${today}T00:00:00+03:00`).toISOString()
+	const endOfDay = new Date(`${today}T23:59:59.999+03:00`).toISOString()
+
+	// НОВЫЕ ГРАНИЦЫ ВРЕМЕНИ
 	let messagePool = []
 	let isThreat = false
 
-	if (hour >= 8 && hour < 12) messagePool = morningMessages
-	else if (hour >= 12 && hour < 19) messagePool = dayMessages
-	else if (hour >= 19 && hour < 21) messagePool = eveningMessages
+	if (hour >= 7 && hour < 11)
+		messagePool = morningMessages // Утро (7:00 - 10:59)
+	else if (hour >= 11 && hour < 17)
+		messagePool = dayMessages // День (11:00 - 16:59)
+	else if (hour >= 17 && hour < 21)
+		messagePool = eveningMessages // Вечер (17:00 - 20:59)
 	else if (hour >= 21 && hour < 23) {
 		messagePool = threatMessages
 		isThreat = true
-	} else
+	} // Угрозы (21:00 - 22:59)
+	else
 		return res
 			.status(200)
 			.json({ msg: `Сейчас ночь (${hour} ч.), бот молчит.` })
 
-	// 3. Получаем всех пользователей
+	// Получаем всех пользователей
 	const { data: users, error } = await supabase.from('users').select('*')
-	if (error || !users || users.length === 0) {
+	if (error || !users || users.length === 0)
 		return res.status(200).json({ msg: 'В базе нет пользователей' })
-	}
 
 	let sentCount = 0
 	let skippedCount = 0
 	let errors = []
 
 	for (const user of users) {
-		// 4. ЗАЩИТА ОТ СПАМА (проверяем, когда отправляли в последний раз)
+		// Защита от спама (если отправляли меньше 1.5 часов назад — пропускаем)
 		const lastNotified = user.last_notified_at
 			? new Date(user.last_notified_at)
 			: null
 		if (lastNotified) {
-			const diffInMs = now - lastNotified
-			const diffInHours = diffInMs / (1000 * 60 * 60)
-			if (diffInHours < 2) {
+			const diffInHours = (now - lastNotified) / (1000 * 60 * 60)
+			if (diffInHours < 1.5) {
 				skippedCount++
-				continue // Пропускаем, если прошло меньше 2 часов
+				continue
 			}
 		}
 
-		// 5. ПРОВЕРКА ВЫПИТОЙ ВОДЫ
+		// Проверка выпитой воды
 		const { data: logs } = await supabase
 			.from('water_logs')
 			.select('amount_ml')
 			.eq('user_id', user.id)
-			.gte('logged_at', `${today}T00:00:00Z`)
+			.gte('logged_at', startOfDay)
+			.lte('logged_at', endOfDay)
 
 		const totalDrunk = logs?.reduce((sum, log) => sum + log.amount_ml, 0) || 0
 
 		if (totalDrunk >= user.water_goal_ml) {
 			skippedCount++
-			continue // Пропускаем, если норма выполнена
+			continue
 		}
 
-		// 6. ФОРМИРУЕМ И ОТПРАВЛЯЕМ СООБЩЕНИЕ
+		// ФОРМИРУЕМ СООБЩЕНИЕ
 		let text = messagePool[Math.floor(Math.random() * messagePool.length)]
 
-		// Если это угроза стрика, подставляем количество дней
 		if (isThreat) {
 			const streak = user.streak_days || 0
-			if (streak === 0) {
-				skippedCount++
-				continue // Если стрика нет, не пугаем
+			if (streak > 0) {
+				// Если стрик есть, подставляем цифру и пугаем
+				text = text.replace('{N}', streak)
+			} else {
+				// Если стрика нет, отправляем обычное вечернее сообщение (без угроз)
+				text =
+					eveningMessages[Math.floor(Math.random() * eveningMessages.length)]
 			}
-			text = text.replace('{N}', streak)
 		}
 
+		// ОТПРАВЛЯЕМ
 		const tgResponse = await fetch(
 			`https://api.telegram.org/bot${botToken}/sendMessage`,
 			{
@@ -112,7 +121,6 @@ export default async function handler(req, res) {
 
 		if (tgResult.ok) {
 			sentCount++
-			// Записываем в базу время успешной отправки (для защиты от спама)
 			await supabase
 				.from('users')
 				.update({ last_notified_at: now.toISOString() })
@@ -122,7 +130,6 @@ export default async function handler(req, res) {
 		}
 	}
 
-	// 7. Отчет для cron-job.org
 	res.status(200).json({
 		ok: true,
 		час_на_сервере_мск: hour,
