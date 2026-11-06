@@ -223,3 +223,9 @@ export async function kickFromFamily(familyId, memberId) {
 export async function renameFamily(familyId, newName) {
 	return callFamilyApi('rename', { familyId, newName })
 }
+// Функция для вызова всплывающих уведомлений
+export function showToast(message, type = 'info') {
+	window.dispatchEvent(
+		new CustomEvent('app-toast', { detail: { message, type } })
+	)
+}

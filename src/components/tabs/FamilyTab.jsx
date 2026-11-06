@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { showToast } from '../../lib/api'
 
 export default function FamilyTab({
 	userId,
@@ -15,8 +16,8 @@ export default function FamilyTab({
 }) {
 	const [newFamilyName, setNewFamilyName] = useState('')
 	const [inviteId, setInviteId] = useState('')
-	const [selectedFamily, setSelectedFamily] = useState(null) // Для приглашения
-	const [settingsFamily, setSettingsFamily] = useState(null) // Для настроек группы
+	const [selectedFamily, setSelectedFamily] = useState(null)
+	const [settingsFamily, setSettingsFamily] = useState(null)
 	const [copySuccess, setCopySuccess] = useState(false)
 
 	const copyToClipboard = () => {
@@ -26,14 +27,20 @@ export default function FamilyTab({
 				setCopySuccess(true)
 				setTimeout(() => setCopySuccess(false), 2000)
 			})
-			.catch(() => alert('Ваш ID: ' + userId))
+			.catch(() => showToast('Ваш ID: ' + userId, 'info'))
+	}
+
+	// Функция для выбора цвета аватарки (от 0 до 5)
+	const getAvatarColor = name => {
+		if (!name) return 0
+		const charCode = name.charCodeAt(0) + (name.length || 0)
+		return charCode % 6
 	}
 
 	return (
 		<section className="section-block page-block">
 			<p className="eyebrow">ВМЕСТЕ ЛЕГЧЕ</p>
 
-			{/* ВХОДЯЩИЕ ПРИГЛАШЕНИЯ */}
 			{invites && invites.length > 0 && (
 				<div
 					style={{
@@ -81,7 +88,6 @@ export default function FamilyTab({
 				</div>
 			)}
 
-			{/* МОЙ ID */}
 			<div
 				style={{
 					background: 'rgba(23, 63, 112, 0.05)',
@@ -138,7 +144,6 @@ export default function FamilyTab({
 				</button>
 			</div>
 
-			{/* МОИ ГРУППЫ */}
 			<h2 style={{ fontSize: '20px', marginBottom: '12px' }}>Мои группы</h2>
 			{families.length === 0 ? (
 				<p className="empty-note">Ты пока не состоишь ни в одной группе.</p>
@@ -191,12 +196,12 @@ export default function FamilyTab({
 							</div>
 						</div>
 
-						{/* СТАТИСТИКА УЧАСТНИКОВ С ВОДОЙ */}
 						<div
 							style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
 						>
 							{fam.members.map(m => {
 								if (m.status !== 'accepted' && m.user_id !== userId) return null
+								const colorClass = `avatar-color-${getAvatarColor(m.first_name)}`
 
 								return (
 									<div
@@ -217,17 +222,18 @@ export default function FamilyTab({
 												gap: '10px'
 											}}
 										>
+											{/* ЦВЕТНАЯ АВАТАРКА */}
 											<div
+												className={`family-avatar ${colorClass}`}
 												style={{
 													width: '36px',
 													height: '36px',
-													background: '#5a80d8',
-													color: '#fff',
 													borderRadius: '50%',
 													display: 'flex',
 													alignItems: 'center',
 													justifyContent: 'center',
-													fontWeight: 'bold'
+													fontWeight: 'bold',
+													color: '#fff'
 												}}
 											>
 												{m.first_name[0]}
@@ -257,7 +263,6 @@ export default function FamilyTab({
 												{m.progress}%
 											</span>
 										</div>
-										{/* Полоска прогресса */}
 										<div
 											style={{
 												width: '100%',
@@ -284,7 +289,6 @@ export default function FamilyTab({
 				))
 			)}
 
-			{/* КОМПАКТНАЯ КНОПКА СОЗДАНИЯ */}
 			<button
 				onClick={() => {
 					const name = prompt('Введите название новой семьи:')
@@ -309,7 +313,6 @@ export default function FamilyTab({
 				<span style={{ fontSize: '20px' }}>+</span> Создать новую семью
 			</button>
 
-			{/* МОДАЛКА ПРИГЛАШЕНИЯ */}
 			{selectedFamily && (
 				<div
 					className="modal-backdrop"
@@ -387,7 +390,6 @@ export default function FamilyTab({
 				</div>
 			)}
 
-			{/* МОДАЛКА НАСТРОЕК ГРУППЫ */}
 			{settingsFamily && (
 				<div
 					className="modal-backdrop"

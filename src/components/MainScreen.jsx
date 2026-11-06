@@ -16,7 +16,8 @@ import {
 	kickFromFamily,
 	renameFamily,
 	clearTodayLogs,
-	updateProfileDb
+	updateProfileDb,
+	showToast
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -36,7 +37,6 @@ const todayKey = () => {
 
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
-	// ПРОВЕРКА: Запущено ли внутри Telegram
 	const isTelegram = !!window.Telegram?.WebApp?.initData
 
 	const [profile, setProfile] = useState(null)
@@ -62,10 +62,27 @@ function MainScreen() {
 	const [invites, setInvites] = useState([])
 	const [familyLoading, setFamilyLoading] = useState(false)
 
+	// Стейт для Toasts
+	const [toasts, setToasts] = useState([])
+
 	const touchStart = useRef({ x: 0, y: 0 })
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family']
+
+	// Слушатель всплывающих уведомлений
+	useEffect(() => {
+		const handleToast = e => {
+			const { message, type } = e.detail
+			const id = Date.now()
+			setToasts(prev => [...prev, { id, message, type }])
+			setTimeout(() => {
+				setToasts(prev => prev.filter(t => t.id !== id))
+			}, 3000) // Исчезает через 3 сек
+		}
+		window.addEventListener('app-toast', handleToast)
+		return () => window.removeEventListener('app-toast', handleToast)
+	}, [])
 
 	const animateSlide = direction => {
 		const container = document.querySelector('.swipe-container')
@@ -190,13 +207,33 @@ function MainScreen() {
 		loadData()
 	}, [userId, today])
 
+	// REALTIME: Мгновенное обновление семьи
 	useEffect(() => {
 		if (tab === 'family' && !isLoading) {
 			loadFamilies()
-			const interval = setInterval(() => {
-				loadFamilies()
-			}, 15000)
-			return () => clearInterval(interval)
+
+			// Подписываемся на изменения в water_logs
+			const channel = supabase
+				.channel('family-updates')
+				.on(
+					'postgres_changes',
+					{ event: '*', schema: 'public', table: 'water_logs' },
+					() => {
+						loadFamilies() // Если кто-то добавил воду — обновляем экран
+					}
+				)
+				.on(
+					'postgres_changes',
+					{ event: '*', schema: 'public', table: 'family_members' },
+					() => {
+						loadFamilies() // Если кто-то принял приглашение — обновляем
+					}
+				)
+				.subscribe()
+
+			return () => {
+				supabase.removeChannel(channel)
+			}
 		}
 	}, [tab, isLoading])
 
@@ -208,15 +245,14 @@ function MainScreen() {
 		const value = Number(amount)
 		if (!Number.isFinite(value) || value <= 0) return
 		if (value > 2000)
-			return alert('Слишком много за один раз! Максимум 2000 мл.')
+			return showToast('Слишком много за один раз! Максимум 2000 мл.', 'error')
 		if (total + value > 5000)
-			return alert('Вы превысили суточный лимит в 5000 мл!')
+			return showToast('Вы превысили суточный лимит в 5000 мл!', 'error')
 		if (isAdding) return
 
 		const previousLogs = [...logs]
 		const previousProfile = { ...profile }
 
-		// ОПТИМИСТИЧНЫЙ UI: Мгновенно показываем результат
 		const tempId = `temp-${Date.now()}`
 		const newLog = {
 			id: tempId,
@@ -262,11 +298,11 @@ function MainScreen() {
 				'family-water-profile',
 				JSON.stringify(updatedProfile)
 			)
+			showToast(`+${value} мл добавлено! 💧`, 'success')
 		} catch (err) {
-			// ОТКАТ, ЕСЛИ ОШИБКА
 			setLogs(previousLogs)
 			setProfile(previousProfile)
-			alert('Ошибка при добавлении воды: ' + err.message)
+			showToast(err.message, 'error')
 		} finally {
 			setIsAdding(false)
 		}
@@ -303,6 +339,7 @@ function MainScreen() {
 		await deleteLogFromDb(id)
 		setLogs(current => current.filter(log => log.id !== id))
 		setChartTotals(await getLast7DaysTotal(userId))
+		showToast('Запись удалена', 'info')
 	}
 
 	async function clearAllLogs() {
@@ -312,6 +349,7 @@ function MainScreen() {
 		await clearTodayLogs(startOfDayISO)
 		setLogs([])
 		setChartTotals(await getLast7DaysTotal(userId))
+		showToast('Все записи за сегодня удалены', 'info')
 	}
 
 	async function saveSettings(event) {
@@ -319,7 +357,8 @@ function MainScreen() {
 		const form = new FormData(event.currentTarget)
 		const name = String(form.get('name') || '').trim()
 		const weight = Number(form.get('weight'))
-		if (!name || !weight || weight <= 0) return
+		if (!name || !weight || weight <= 0)
+			return showToast('Введите корректные данные', 'error')
 
 		const updated = {
 			...profile,
@@ -332,6 +371,7 @@ function MainScreen() {
 		setSettings(false)
 
 		await updateProfileDb(name, weight)
+		showToast('Профиль обновлен', 'success')
 	}
 
 	function shareId() {
@@ -344,15 +384,18 @@ function MainScreen() {
 		else
 			navigator.clipboard
 				?.writeText(text)
-				.then(() => alert(`ID скопирован: ${userId}`))
+				.then(() => showToast(`ID скопирован!`, 'success'))
 	}
 
 	async function handleCreateFamily(name) {
 		if (!name.trim()) return
 		setFamilyLoading(true)
 		const res = await createFamily(userId, name)
-		if (res.error) alert(res.error)
-		else await loadFamilies()
+		if (res.error) showToast(res.error, 'error')
+		else {
+			await loadFamilies()
+			showToast('Группа создана!', 'success')
+		}
 		setFamilyLoading(false)
 	}
 
@@ -365,9 +408,9 @@ function MainScreen() {
 			profile.first_name,
 			familyName
 		)
-		if (res.error) alert(res.error)
+		if (res.error) showToast(res.error, 'error')
 		else {
-			alert('Приглашение отправлено!')
+			showToast('Приглашение отправлено!', 'success')
 			await loadFamilies()
 		}
 		setFamilyLoading(false)
@@ -377,6 +420,7 @@ function MainScreen() {
 		setFamilyLoading(true)
 		await acceptFamilyInvite(familyId, userId)
 		await loadFamilies()
+		showToast('Вы вступили в группу!', 'success')
 		setFamilyLoading(false)
 	}
 
@@ -384,6 +428,7 @@ function MainScreen() {
 		setFamilyLoading(true)
 		await deleteFamily(familyId)
 		await loadFamilies()
+		showToast('Группа удалена', 'info')
 		setFamilyLoading(false)
 	}
 
@@ -391,6 +436,7 @@ function MainScreen() {
 		setFamilyLoading(true)
 		await kickFromFamily(familyId, memberId)
 		await loadFamilies()
+		showToast('Участник удален', 'info')
 		setFamilyLoading(false)
 	}
 
@@ -398,6 +444,7 @@ function MainScreen() {
 		setFamilyLoading(true)
 		await renameFamily(familyId, newName)
 		await loadFamilies()
+		showToast('Название изменено', 'success')
 		setFamilyLoading(false)
 	}
 
@@ -419,7 +466,6 @@ function MainScreen() {
 	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
 	const weekAverage = Math.round(weekTotal / 7)
 
-	// ЭКРАН "МЕРТВОЙ СЕССИИ" (Если открыто не в Telegram)
 	if (!isTelegram) {
 		return (
 			<div
@@ -451,43 +497,68 @@ function MainScreen() {
 					Это приложение работает только внутри Telegram. Пожалуйста, перейдите
 					в нашего бота и откройте его оттуда.
 				</p>
-				<a
-					href="https://t.me/family_waterBot"
-					target="_blank"
-					rel="noreferrer"
-					className="primary-action"
-					style={{
-						display: 'inline-block',
-						textDecoration: 'none',
-						maxWidth: '250px'
-					}}
-				>
-					Перейти в бота
-				</a>
 			</div>
 		)
 	}
 
-	if (isLoading)
+	// СКЕЛЕТОН-ЗАГРУЗКА
+	if (isLoading) {
 		return (
-			<div
-				style={{
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-					height: '100vh',
-					background: isDark ? '#0f172a' : '#eef5fb',
-					color: isDark ? '#fff' : '#12355b',
-					fontSize: '18px',
-					fontWeight: 'bold'
-				}}
+			<main
+				className={`water-app ${isDark ? 'dark-theme' : ''}`}
+				style={{ padding: '24px 18px' }}
 			>
-				Загрузка данных... 💧
-			</div>
+				<div
+					className="skeleton skeleton-text"
+					style={{ width: '40%', height: '14px', marginBottom: '20px' }}
+				></div>
+				<div
+					className="skeleton skeleton-text"
+					style={{ width: '70%', height: '30px', marginBottom: '30px' }}
+				></div>
+
+				<div
+					style={{
+						display: 'grid',
+						gridTemplateColumns: 'repeat(3, 1fr)',
+						gap: '8px',
+						marginBottom: '16px'
+					}}
+				>
+					<div
+						className="skeleton"
+						style={{ height: '50px' }}
+					></div>
+					<div
+						className="skeleton"
+						style={{ height: '50px' }}
+					></div>
+					<div
+						className="skeleton"
+						style={{ height: '50px' }}
+					></div>
+				</div>
+
+				<div className="skeleton skeleton-card"></div>
+				<div className="skeleton skeleton-card"></div>
+			</main>
 		)
+	}
 
 	return (
 		<main className={`water-app ${isDark ? 'dark-theme' : ''}`}>
+			{/* КОНТЕЙНЕР ДЛЯ TOASTS */}
+			<div className="toast-container">
+				{toasts.map(t => (
+					<div
+						key={t.id}
+						className={`toast ${t.type}`}
+					>
+						{t.message}
+					</div>
+				))}
+			</div>
+
 			<header className="water-header app-topbar">
 				<div className="header-text">
 					<p className="eyebrow">СЕМЕЙНЫЙ ТРЕКЕР</p>

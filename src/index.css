@@ -929,3 +929,107 @@ body {
 	justify-content: center;
 	border: 2px solid #173f70;
 }
+/* ==========================================
+   КРАСИВЫЕ ВСПЛЫВАЮЩИЕ УВЕДОМЛЕНИЯ (TOASTS)
+   ========================================== */
+.toast-container {
+	position: fixed;
+	bottom: 90px; /* Над нижним меню */
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 9999;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	width: 90%;
+	max-width: 350px;
+	pointer-events: none;
+}
+
+.toast {
+	padding: 14px 18px;
+	border-radius: 12px;
+	color: #fff;
+	font-size: 14px;
+	font-weight: 600;
+	text-align: center;
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+	animation: toastSlideUp 0.3s ease-out forwards;
+}
+
+.toast.success {
+	background: #0ba360;
+}
+.toast.error {
+	background: #c17575;
+}
+.toast.info {
+	background: #1886ad;
+}
+
+@keyframes toastSlideUp {
+	from {
+		opacity: 0;
+		transform: translateY(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* ==========================================
+   СКЕЛЕТОН-ЗАГРУЗКА (SKELETON)
+   ========================================== */
+.skeleton {
+	background: #e2e8f0;
+	border-radius: 8px;
+	animation: pulse 1.5s infinite ease-in-out;
+}
+.dark-theme .skeleton {
+	background: #334155;
+}
+@keyframes pulse {
+	0% {
+		opacity: 0.6;
+	}
+	50% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0.6;
+	}
+}
+
+.skeleton-card {
+	height: 180px;
+	border-radius: 24px;
+	margin-bottom: 16px;
+}
+.skeleton-text {
+	height: 20px;
+	margin-bottom: 8px;
+	width: 60%;
+}
+
+/* ==========================================
+   ЦВЕТНЫЕ АВАТАРКИ
+   ========================================== */
+.avatar-color-0 {
+	background: #ff7675;
+} /* Красный */
+.avatar-color-1 {
+	background: #74b9ff;
+} /* Синий */
+.avatar-color-2 {
+	background: #55efc4;
+} /* Зеленый */
+.avatar-color-3 {
+	background: #fdcb6e;
+} /* Желтый */
+.avatar-color-4 {
+	background: #a29bfe;
+} /* Фиолетовый */
+.avatar-color-5 {
+	background: #fd79a8;
+} /* Розовый */
