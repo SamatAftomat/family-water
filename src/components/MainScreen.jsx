@@ -223,10 +223,33 @@ function MainScreen() {
 			return alert('Слишком много за один раз! Максимум 2000 мл.')
 		if (total + value > 5000)
 			return alert('Вы превысили суточный лимит в 5000 мл!')
+		if (isAdding) return // Защита от двойного клика
 
+		// 1. СОХРАНЯЕМ СТАРОЕ СОСТОЯНИЕ (на случай, если сервер выдаст ошибку)
+		const previousLogs = [...logs]
+		const previousProfile = { ...profile }
+
+		// 2. МГНОВЕННО ОБНОВЛЯЕМ ЭКРАН (Оптимистичный UI)
+		const tempId = `temp-${Date.now()}`
+		const newLog = {
+			id: tempId,
+			amount: value,
+			time: new Date().toLocaleTimeString('ru-RU', {
+				hour: '2-digit',
+				minute: '2-digit',
+				timeZone: 'Europe/Moscow'
+			}),
+			date: today
+		}
+
+		setLogs([newLog, ...logs])
+		setCustomAmount('')
+		setShowCustom(false)
+		setIsAdding(true) // Блокируем кнопки, пока идет запрос
+
+		// 3. ЗАПУСКАЕМ АНИМАЦИЮ НАГРАДЫ (если достигли цели)
 		const wasComplete = total >= goal
 		const isCompleteNow = total + value >= goal
-
 		if (!wasComplete && isCompleteNow) {
 			if (window.Telegram?.WebApp?.HapticFeedback)
 				window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
@@ -239,9 +262,11 @@ function MainScreen() {
 			setShowReward(true)
 		}
 
-		setIsAdding(true)
+		// 4. ОТПРАВЛЯЕМ В ФОНЕ НА СЕРВЕР
 		try {
 			await addWaterToDb(userId, value, profile)
+
+			// Синхронизируем с сервером (чтобы получить точные алмазы и стрик)
 			const updatedProfile = await getUserProfile(userId)
 			const updatedLogs = await getTodayLogs(userId, today)
 			const totals7Days = await getLast7DaysTotal(userId)
@@ -254,11 +279,12 @@ function MainScreen() {
 				JSON.stringify(updatedProfile)
 			)
 		} catch (err) {
+			// ОТКАТ ИЗМЕНЕНИЙ, ЕСЛИ СЕРВЕР ВЫДАЛ ОШИБКУ
+			setLogs(previousLogs)
+			setProfile(previousProfile)
 			alert('Ошибка при добавлении воды: ' + err.message)
 		} finally {
 			setIsAdding(false)
-			setCustomAmount('')
-			setShowCustom(false)
 		}
 	}
 
