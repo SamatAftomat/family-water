@@ -431,3 +431,19 @@ export async function getQuestProgress(userId, today, families) {
 
 	return { personal: personalQuest, family: familyQuests }
 }
+// ==========================================
+// ДОСТИЖЕНИЯ (АЧИВКИ)
+// ==========================================
+
+export async function getClaimedAchievements(userId) {
+	if (!supabase) return []
+	const { data } = await supabase
+		.from('user_achievements')
+		.select('ach_id')
+		.eq('user_id', userId)
+	return data ? data.map(a => a.ach_id) : []
+}
+
+export async function claimAchievementApi(userId, achId, reward) {
+	return callUserApi('claim_achievement', { achId, reward })
+}

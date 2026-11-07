@@ -1,0 +1,110 @@
+[
+	{
+		"id": "ach_water_10l",
+		"title": "Первые 10 литров",
+		"icon": "💧",
+		"desc": "Выпей 10 литров воды за всё время",
+		"type": "total_water",
+		"goal": 10000,
+		"reward": 20
+	},
+	{
+		"id": "ach_water_50l",
+		"title": "Полсотни",
+		"icon": "🚰",
+		"desc": "Выпей 50 литров за всё время",
+		"type": "total_water",
+		"goal": 50000,
+		"reward": 50
+	},
+	{
+		"id": "ach_water_100l",
+		"title": "Гидро-мастер",
+		"icon": "🌊",
+		"desc": "Выпей 100 литров за всё время",
+		"type": "total_water",
+		"goal": 100000,
+		"reward": 100
+	},
+	{
+		"id": "ach_water_500l",
+		"title": "Повелитель морей",
+		"icon": "🐳",
+		"desc": "Выпей 500 литров за всё время",
+		"type": "total_water",
+		"goal": 500000,
+		"reward": 300
+	},
+	{
+		"id": "ach_streak_3",
+		"title": "Отличный старт",
+		"icon": "🌱",
+		"desc": "Стрик 3 дня подряд",
+		"type": "streak",
+		"goal": 3,
+		"reward": 10
+	},
+	{
+		"id": "ach_streak_7",
+		"title": "Неделя силы",
+		"icon": "🔥",
+		"desc": "Стрик 7 дней подряд",
+		"type": "streak",
+		"goal": 7,
+		"reward": 25
+	},
+	{
+		"id": "ach_streak_30",
+		"title": "Месяц дисциплины",
+		"icon": "🏆",
+		"desc": "Стрик 30 дней подряд",
+		"type": "streak",
+		"goal": 30,
+		"reward": 150
+	},
+	{
+		"id": "ach_streak_100",
+		"title": "Железная воля",
+		"icon": "👑",
+		"desc": "Стрик 100 дней подряд",
+		"type": "streak",
+		"goal": 100,
+		"reward": 500
+	},
+	{
+		"id": "ach_family_create",
+		"title": "Основатель",
+		"icon": "🏠",
+		"desc": "Создай свою первую семейную группу",
+		"type": "family_count",
+		"goal": 1,
+		"reward": 15
+	},
+	{
+		"id": "ach_family_3",
+		"title": "Командный игрок",
+		"icon": "👨‍👩‍👧",
+		"desc": "В твоей семье 3 человека",
+		"type": "family_members",
+		"goal": 3,
+		"reward": 30
+	},
+	{
+		"id": "ach_family_5",
+		"title": "Большая семья",
+		"icon": "👨‍👩‍👧‍👦",
+		"desc": "В твоей семье 5 человек",
+		"type": "family_members",
+		"goal": 5,
+		"reward": 50
+	},
+	{
+		"id": "ach_title_buy",
+		"title": "Модник",
+		"icon": "🕶️",
+		"desc": "Купи любой титул в магазине",
+		"type": "title_bought",
+		"goal": 1,
+		"reward": 20
+	}
+]

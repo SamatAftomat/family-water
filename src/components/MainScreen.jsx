@@ -34,7 +34,72 @@ import RewardModal from './modals/RewardModal'
 import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
 import ShopModal from './modals/ShopModal'
+// Добавь импорты в начале файла
+import achievementsData from '../data/achievements.json'
+// В импорт из api.js добавь:
+import { getClaimedAchievements, claimAchievementApi } from '../lib/api'
 
+// Внутри MainScreen добавь стейты:
+const [claimedAchs, setClaimedAchs] = useState([])
+const [userStats, setUserStats] = useState({
+	totalWater: 0,
+	streak: 0,
+	familyCount: 0,
+	maxFamilyMembers: 0,
+	titlesBought: 0
+})
+
+// В loadData (внутри useEffect), добавь загрузку ачивок и статистики:
+const achs = await getClaimedAchievements(userId)
+setClaimedAchs(achs)
+
+// Также нужно получить общий объем воды (можно добавить функцию в api.js или прямо тут)
+const { data: allLogs } = await supabase
+	.from('water_logs')
+	.select('amount_ml')
+	.eq('user_id', userId)
+const totalWater = (allLogs || []).reduce((sum, l) => sum + l.amount_ml, 0)
+
+// Считаем статистику для ачивок
+const maxMembers =
+	fams.length > 0 ? Math.max(...fams.map(f => f.members.length)) : 0
+const titlesCount = inv.filter(i => i.startsWith('title_')).length
+
+setUserStats({
+	totalWater,
+	streak: dbProfile?.streak_days || 0,
+	familyCount: fams.length,
+	maxFamilyMembers: maxMembers,
+	titlesBought: titlesCount
+})
+
+// Добавь обработчик получения награды:
+async function handleClaimAch(ach) {
+	const res = await claimAchievementApi(userId, ach.id, ach.reward)
+	if (res.error) {
+		showToast(res.error, 'error')
+	} else {
+		showToast(`Награда получена! +${ach.reward} ✦`, 'success')
+		setClaimedAchs(prev => [...prev, ach.id])
+		setProfile(prev => ({
+			...prev,
+			diamonds: (prev.diamonds || 0) + ach.reward
+		}))
+	}
+}
+
+// Передай всё в QuestsTab:
+{
+	tab === 'quests' && (
+		<QuestsTab
+			quests={quests}
+			handleClaimQuest={handleClaimQuest}
+			achievements={claimedAchs}
+			handleClaimAch={handleClaimAch}
+			userStats={userStats}
+		/>
+	)
+}
 const todayKey = () => {
 	const d = new Date()
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`

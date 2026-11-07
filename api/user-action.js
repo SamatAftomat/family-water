@@ -10,9 +10,7 @@ export default async function handler(req, res) {
 	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 	if (!botToken || !supabaseUrl || !supabaseKey || !initData) {
-		return res
-			.status(500)
-			.json({ error: 'Ошибка конфигурации сервера (проверьте ключи в Vercel)' })
+		return res.status(500).json({ error: 'Ошибка конфигурации' })
 	}
 
 	const params = new URLSearchParams(initData)
@@ -70,10 +68,8 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// БЕЗОПАСНАЯ ПОКУПКА
 		if (action === 'buy_item') {
 			const { itemId, price } = payload
-
 			const { data: profile } = await supabase
 				.from('users')
 				.select('diamonds')
@@ -82,25 +78,48 @@ export default async function handler(req, res) {
 			if (!profile) throw new Error('Профиль не найден')
 			if (profile.diamonds < price) throw new Error('Недостаточно алмазов!')
 
-			// 1. Списываем алмазы
 			if (price > 0) {
-				const { error: deductError } = await supabase
+				await supabase
 					.from('users')
 					.update({ diamonds: profile.diamonds - price })
 					.eq('id', user.id)
-				if (deductError) throw new Error('Ошибка списания алмазов')
 			}
+			const { error: insertError } = await supabase
+				.from('inventory')
+				.insert({ user_id: user.id, item_id: itemId })
+			if (insertError && insertError.code !== '23505')
+				throw new Error('Ошибка инвентаря')
+			return res.status(200).json({ ok: true })
+		}
 
-			// 2. Добавляем в инвентарь
-			const { error: insertError } = await supabase.from('inventory').insert({
-				user_id: user.id,
-				item_id: itemId
-			})
+		// ВЫДАЧА НАГРАДЫ ЗА ДОСТИЖЕНИЕ
+		if (action === 'claim_achievement') {
+			const { achId, reward } = payload
 
-			// Если предмет уже есть, не считаем это ошибкой (например, при открытии кейса)
-			if (insertError && insertError.code !== '23505') {
-				throw new Error('Ошибка добавления в инвентарь')
-			}
+			// Проверяем, не забрал ли уже
+			const { data: existing } = await supabase
+				.from('user_achievements')
+				.select('id')
+				.eq('user_id', user.id)
+				.eq('ach_id', achId)
+				.maybeSingle()
+			if (existing) throw new Error('Награда уже получена')
+
+			// Записываем достижение
+			await supabase
+				.from('user_achievements')
+				.insert({ user_id: user.id, ach_id: achId })
+
+			// Начисляем алмазы
+			const { data: profile } = await supabase
+				.from('users')
+				.select('diamonds')
+				.eq('id', user.id)
+				.single()
+			await supabase
+				.from('users')
+				.update({ diamonds: profile.diamonds + reward })
+				.eq('id', user.id)
 
 			return res.status(200).json({ ok: true })
 		}
