@@ -58,11 +58,22 @@ export default async function handler(req, res) {
 		}
 
 		if (action === 'update_profile') {
+			const name = String(payload.name || '').trim()
+			const weight = Number(payload.weight)
+
+			// ВАЛИДАЦИЯ
+			if (name.length < 2 || name.length > 20) {
+				throw new Error('Имя должно быть от 2 до 20 символов')
+			}
+			if (weight < 20 || weight > 300) {
+				throw new Error('Вес должен быть от 20 до 300 кг')
+			}
+
 			const { error } = await supabase.from('users').upsert({
 				id: user.id,
-				first_name: payload.name,
-				weight_kg: payload.weight,
-				water_goal_ml: payload.weight * 30
+				first_name: name,
+				weight_kg: weight,
+				water_goal_ml: weight * 30
 			})
 			if (error) throw error
 			return res.status(200).json({ ok: true })
