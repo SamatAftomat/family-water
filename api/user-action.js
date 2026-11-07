@@ -10,7 +10,9 @@ export default async function handler(req, res) {
 	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 	if (!botToken || !supabaseUrl || !supabaseKey || !initData) {
-		return res.status(500).json({ error: 'Ошибка конфигурации сервера' })
+		return res
+			.status(500)
+			.json({ error: 'Ошибка конфигурации сервера (проверьте ключи в Vercel)' })
 	}
 
 	const params = new URLSearchParams(initData)
@@ -68,7 +70,7 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// НОВОЕ ДЕЙСТВИЕ: БЕЗОПАСНАЯ ПОКУПКА
+		// БЕЗОПАСНАЯ ПОКУПКА
 		if (action === 'buy_item') {
 			const { itemId, price } = payload
 
@@ -80,7 +82,7 @@ export default async function handler(req, res) {
 			if (!profile) throw new Error('Профиль не найден')
 			if (profile.diamonds < price) throw new Error('Недостаточно алмазов!')
 
-			// Списываем алмазы
+			// 1. Списываем алмазы
 			if (price > 0) {
 				const { error: deductError } = await supabase
 					.from('users')
@@ -89,13 +91,13 @@ export default async function handler(req, res) {
 				if (deductError) throw new Error('Ошибка списания алмазов')
 			}
 
-			// Добавляем в инвентарь
+			// 2. Добавляем в инвентарь
 			const { error: insertError } = await supabase.from('inventory').insert({
 				user_id: user.id,
 				item_id: itemId
 			})
 
-			// Если предмет уже есть (например, выпал из кейса), игнорируем ошибку
+			// Если предмет уже есть, не считаем это ошибкой (например, при открытии кейса)
 			if (insertError && insertError.code !== '23505') {
 				throw new Error('Ошибка добавления в инвентарь')
 			}

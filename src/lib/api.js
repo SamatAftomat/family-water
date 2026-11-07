@@ -262,51 +262,6 @@ export async function buyItemApi(
 ) {
 	return callUserApi('buy_item', { itemId, price })
 }
-{
-	if (!supabase) return { error: 'Нет связи с базой' }
-
-	// Если это прямой магазин — проверяем дубликат
-	if (!skipDuplicateCheck) {
-		const { data: existing } = await supabase
-			.from('inventory')
-			.select('id')
-			.eq('user_id', userId)
-			.eq('item_id', itemId)
-			.maybeSingle()
-		if (existing) return { error: 'Этот предмет уже куплен' }
-	}
-
-	// Проверяем баланс
-	const { data: profile } = await supabase
-		.from('users')
-		.select('diamonds')
-		.eq('id', userId)
-		.single()
-	if (!profile) return { error: 'Профиль не найден' }
-	if (profile.diamonds < price) return { error: 'Недостаточно алмазов!' }
-
-	// Списываем алмазы
-	if (price > 0) {
-		const { error: deductError } = await supabase
-			.from('users')
-			.update({ diamonds: profile.diamonds - price })
-			.eq('id', userId)
-		if (deductError) return { error: 'Ошибка списания' }
-	}
-
-	// Добавляем в инвентарь (если уже есть — просто игнорим дубль)
-	const { error: insertError } = await supabase.from('inventory').insert({
-		user_id: userId,
-		item_id: itemId
-	})
-
-	// Игнорируем ошибку дубликата при кейсе
-	if (insertError && !skipDuplicateCheck) {
-		return { error: 'Ошибка инвентаря' }
-	}
-
-	return { success: true, newBalance: profile.diamonds - price }
-}
 
 // ==========================================
 // ЗАДАНИЯ
