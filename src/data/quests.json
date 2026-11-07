@@ -1,7 +1,27 @@
 {
 	"personalQuests": [
 		{
-			"id": "early_bird",
+			"id": "early_bird_300",
+			"title": "Ранняя пташка",
+			"description": "Выпей 300 мл до 12:00",
+			"type": "early_ml",
+			"goal": 300,
+			"unit": "мл",
+			"reward": 3,
+			"icon": "🌅"
+		},
+		{
+			"id": "early_bird_400",
+			"title": "Ранняя пташка",
+			"description": "Выпей 400 мл до 12:00",
+			"type": "early_ml",
+			"goal": 400,
+			"unit": "мл",
+			"reward": 4,
+			"icon": "🌅"
+		},
+		{
+			"id": "early_bird_500",
 			"title": "Ранняя пташка",
 			"description": "Выпей 500 мл до 12:00",
 			"type": "early_ml",
@@ -11,19 +31,109 @@
 			"icon": "🌅"
 		},
 		{
-			"id": "marathon",
+			"id": "early_bird_600",
+			"title": "Ранняя пташка",
+			"description": "Выпей 600 мл до 12:00",
+			"type": "early_ml",
+			"goal": 600,
+			"unit": "мл",
+			"reward": 6,
+			"icon": "🌅"
+		},
+		{
+			"id": "early_bird_700",
+			"title": "Ранняя пташка",
+			"description": "Выпей 700 мл до 12:00",
+			"type": "early_ml",
+			"goal": 700,
+			"unit": "мл",
+			"reward": 7,
+			"icon": "🌅"
+		},
+		{
+			"id": "marathon_3",
 			"title": "Марафонец",
-			"description": "Сделай 5 записей за день",
+			"description": "Сделай 3 записи за день",
 			"type": "log_count",
-			"goal": 5,
+			"goal": 3,
+			"unit": "записей",
+			"reward": 2,
+			"icon": "🏃"
+		},
+		{
+			"id": "marathon_4",
+			"title": "Марафонец",
+			"description": "Сделай 4 записи за день",
+			"type": "log_count",
+			"goal": 4,
 			"unit": "записей",
 			"reward": 3,
 			"icon": "🏃"
 		},
 		{
-			"id": "night_owl",
+			"id": "marathon_5",
+			"title": "Марафонец",
+			"description": "Сделай 5 записей за день",
+			"type": "log_count",
+			"goal": 5,
+			"unit": "записей",
+			"reward": 4,
+			"icon": "🏃"
+		},
+		{
+			"id": "marathon_6",
+			"title": "Марафонец",
+			"description": "Сделай 6 записей за день",
+			"type": "log_count",
+			"goal": 6,
+			"unit": "записей",
+			"reward": 5,
+			"icon": "🏃"
+		},
+		{
+			"id": "marathon_7",
+			"title": "Марафонец",
+			"description": "Сделай 7 записей за день",
+			"type": "log_count",
+			"goal": 7,
+			"unit": "записей",
+			"reward": 6,
+			"icon": "🏃"
+		},
+		{
+			"id": "marathon_8",
+			"title": "Марафонец",
+			"description": "Сделай 8 записей за день",
+			"type": "log_count",
+			"goal": 8,
+			"unit": "записей",
+			"reward": 7,
+			"icon": "🏃"
+		},
+		{
+			"id": "marathon_10",
+			"title": "Марафонец",
+			"description": "Сделай 10 записей за день",
+			"type": "log_count",
+			"goal": 10,
+			"unit": "записей",
+			"reward": 9,
+			"icon": "🏃"
+		},
+		{
+			"id": "night_owl_150",
 			"title": "Полуночник",
-			"description": "Выпей воду после 21:00",
+			"description": "Выпей 150 мл после 21:00",
+			"type": "late_ml",
+			"goal": 150,
+			"unit": "мл",
+			"reward": 3,
+			"icon": "🦉"
+		},
+		{
+			"id": "night_owl_200",
+			"title": "Полуночник",
+			"description": "Выпей 200 мл после 21:00",
 			"type": "late_ml",
 			"goal": 200,
 			"unit": "мл",
@@ -31,23 +141,123 @@
 			"icon": "🦉"
 		},
 		{
-			"id": "steady_pace",
+			"id": "night_owl_250",
+			"title": "Полуночник",
+			"description": "Выпей 250 мл после 21:00",
+			"type": "late_ml",
+			"goal": 250,
+			"unit": "мл",
+			"reward": 5,
+			"icon": "🦉"
+		},
+		{
+			"id": "night_owl_300",
+			"title": "Полуночник",
+			"description": "Выпей 300 мл после 21:00",
+			"type": "late_ml",
+			"goal": 300,
+			"unit": "мл",
+			"reward": 6,
+			"icon": "🦉"
+		},
+		{
+			"id": "steady_pace_1",
+			"title": "Ровный темп",
+			"description": "Выпей 1 стакан (200 мл)",
+			"type": "exact_200_logs",
+			"goal": 1,
+			"unit": "раз",
+			"reward": 1,
+			"icon": "🥛"
+		},
+		{
+			"id": "steady_pace_2",
+			"title": "Ровный темп",
+			"description": "Выпей 2 стакана по 200 мл",
+			"type": "exact_200_logs",
+			"goal": 2,
+			"unit": "раз",
+			"reward": 2,
+			"icon": "🥛"
+		},
+		{
+			"id": "steady_pace_3",
 			"title": "Ровный темп",
 			"description": "Выпей 3 стакана по 200 мл",
 			"type": "exact_200_logs",
 			"goal": 3,
 			"unit": "раз",
+			"reward": 3,
+			"icon": "🥛"
+		},
+		{
+			"id": "steady_pace_4",
+			"title": "Ровный темп",
+			"description": "Выпей 4 стакана по 200 мл",
+			"type": "exact_200_logs",
+			"goal": 4,
+			"unit": "раз",
 			"reward": 4,
 			"icon": "🥛"
 		},
 		{
-			"id": "big_gulp",
+			"id": "steady_pace_5",
+			"title": "Ровный темп",
+			"description": "Выпей 5 стаканов по 200 мл",
+			"type": "exact_200_logs",
+			"goal": 5,
+			"unit": "раз",
+			"reward": 5,
+			"icon": "🥛"
+		},
+		{
+			"id": "steady_pace_6",
+			"title": "Ровный темп",
+			"description": "Выпей 6 стаканов по 200 мл",
+			"type": "exact_200_logs",
+			"goal": 6,
+			"unit": "раз",
+			"reward": 6,
+			"icon": "🥛"
+		},
+		{
+			"id": "steady_pace_8",
+			"title": "Ровный темп",
+			"description": "Выпей 8 стаканов по 200 мл",
+			"type": "exact_200_logs",
+			"goal": 8,
+			"unit": "раз",
+			"reward": 8,
+			"icon": "🥛"
+		},
+		{
+			"id": "big_gulp_400",
 			"title": "Большой глоток",
 			"description": "Выпей 400 мл за один раз",
 			"type": "single_log_400",
 			"goal": 1,
 			"unit": "раз",
 			"reward": 2,
+			"icon": "🐳"
+		},
+		{
+			"id": "big_gulp_500",
+			"title": "Большой глоток",
+			"description": "Выпей 500 мл за один раз",
+			"type": "single_log_400",
+			"goal": 1,
+			"unit": "раз",
+			"reward": 3,
+			"icon": "🐳"
+		},
+		{
+			"id": "big_gulp_600",
+			"title": "Большой глоток",
+			"description": "Выпей 600 мл за один раз",
+			"type": "single_log_400",
+			"goal": 1,
+			"unit": "раз",
+			"reward": 4,
 			"icon": "🐳"
 		},
 		{
@@ -59,41 +269,203 @@
 			"unit": "%",
 			"reward": 5,
 			"icon": "🎯"
+		},
+		{
+			"id": "challenge_1500",
+			"title": "Водный челлендж",
+			"description": "Выпей 1500 мл за день",
+			"type": "total_ml",
+			"goal": 1500,
+			"unit": "мл",
+			"reward": 4,
+			"icon": "🌊"
+		},
+		{
+			"id": "challenge_2000",
+			"title": "Водный челлендж",
+			"description": "Выпей 2000 мл за день",
+			"type": "total_ml",
+			"goal": 2000,
+			"unit": "мл",
+			"reward": 6,
+			"icon": "🌊"
+		},
+		{
+			"id": "challenge_2500",
+			"title": "Водный челлендж",
+			"description": "Выпей 2500 мл за день",
+			"type": "total_ml",
+			"goal": 2500,
+			"unit": "мл",
+			"reward": 8,
+			"icon": "🌊"
 		}
 	],
 	"familyQuests": [
 		{
-			"id": "weekly_sprint",
-			"title": "Недельный спринт",
+			"id": "weekly_15l",
+			"title": "Семейный спринт",
+			"description": "Вся семья выпила 15 литров за неделю",
+			"type": "family_ml",
+			"period": "week",
+			"goal": 15000,
+			"unit": "мл",
+			"reward": 15,
+			"icon": "🏃"
+		},
+		{
+			"id": "weekly_20l",
+			"title": "Семейная пятерка",
+			"description": "Вся семья выпила 20 литров за неделю",
+			"type": "family_ml",
+			"period": "week",
+			"goal": 20000,
+			"unit": "мл",
+			"reward": 20,
+			"icon": "🖐️"
+		},
+		{
+			"id": "weekly_30l",
+			"title": "Семейный марафон",
 			"description": "Вся семья выпила 30 литров за неделю",
 			"type": "family_ml",
 			"period": "week",
 			"goal": 30000,
 			"unit": "мл",
-			"reward": 20,
-			"icon": "🏃"
+			"reward": 25,
+			"icon": "🏃‍♂️"
 		},
 		{
-			"id": "weekly_marathon",
-			"title": "Недельный марафон",
-			"description": "Вся семья выпила 60 литров за неделю",
+			"id": "weekly_40l",
+			"title": "Семейная гонка",
+			"description": "Вся семья выпила 40 литров за неделю",
 			"type": "family_ml",
 			"period": "week",
-			"goal": 60000,
+			"goal": 40000,
 			"unit": "мл",
-			"reward": 50,
+			"reward": 35,
+			"icon": "🚴"
+		},
+		{
+			"id": "weekly_50l",
+			"title": "Семейный ультрамарафон",
+			"description": "Вся семья выпила 50 литров за неделю",
+			"type": "family_ml",
+			"period": "week",
+			"goal": 50000,
+			"unit": "мл",
+			"reward": 45,
 			"icon": "🏆"
 		},
 		{
-			"id": "monthly_legend",
-			"title": "Месячная легенда",
+			"id": "weekly_70l",
+			"title": "Семейный вызов",
+			"description": "Вся семья выпила 70 литров за неделю",
+			"type": "family_ml",
+			"period": "week",
+			"goal": 70000,
+			"unit": "мл",
+			"reward": 60,
+			"icon": "🔥"
+		},
+		{
+			"id": "weekly_100l",
+			"title": "Семейный рекорд",
+			"description": "Вся семья выпила 100 литров за неделю",
+			"type": "family_ml",
+			"period": "week",
+			"goal": 100000,
+			"unit": "мл",
+			"reward": 80,
+			"icon": "👑"
+		},
+		{
+			"id": "monthly_50l",
+			"title": "Месячный старт",
+			"description": "Вся семья выпила 50 литров за месяц",
+			"type": "family_ml",
+			"period": "month",
+			"goal": 50000,
+			"unit": "мл",
+			"reward": 30,
+			"icon": "🌱"
+		},
+		{
+			"id": "monthly_100l",
+			"title": "Месячный рубеж",
+			"description": "Вся семья выпила 100 литров за месяц",
+			"type": "family_ml",
+			"period": "month",
+			"goal": 100000,
+			"unit": "мл",
+			"reward": 50,
+			"icon": "🌳"
+		},
+		{
+			"id": "monthly_150l",
+			"title": "Месячный марафон",
+			"description": "Вся семья выпила 150 литров за месяц",
+			"type": "family_ml",
+			"period": "month",
+			"goal": 150000,
+			"unit": "мл",
+			"reward": 75,
+			"icon": "🏅"
+		},
+		{
+			"id": "monthly_200l",
+			"title": "Месячная цель",
 			"description": "Вся семья выпила 200 литров за месяц",
 			"type": "family_ml",
 			"period": "month",
 			"goal": 200000,
 			"unit": "мл",
-			"reward": 200,
+			"reward": 100,
+			"icon": "🎯"
+		},
+		{
+			"id": "monthly_300l",
+			"title": "Месячная легенда",
+			"description": "Вся семья выпила 300 литров за месяц",
+			"type": "family_ml",
+			"period": "month",
+			"goal": 300000,
+			"unit": "мл",
+			"reward": 150,
 			"icon": "💎"
+		},
+		{
+			"id": "monthly_400l",
+			"title": "Семейный титан",
+			"description": "Вся семья выпила 400 литров за месяц",
+			"type": "family_ml",
+			"period": "month",
+			"goal": 400000,
+			"unit": "мл",
+			"reward": 200,
+			"icon": "🦾"
+		},
+		{
+			"id": "monthly_500l",
+			"title": "Семейный космос",
+			"description": "Вся семья выпила 500 литров за месяц",
+			"type": "family_ml",
+			"period": "month",
+			"goal": 500000,
+			"unit": "мл",
+			"reward": 250,
+			"icon": "🚀"
+		},
+		{
+			"id": "family_all_goal",
+			"title": "Синхронизация",
+			"description": "Все члены семьи выполнили норму в один день",
+			"type": "family_all_goal",
+			"period": "day",
+			"goal": 1,
+			"unit": "раз",
+			"reward": 15,
+			"icon": "🤝"
 		}
 	]
 }

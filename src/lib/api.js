@@ -69,7 +69,7 @@ export async function getLast7DaysTotal(userId) {
 }
 
 // ==========================================
-// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ЧЕРЕЗ API)
+// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ВОДА И ПРОФИЛЬ)
 // ==========================================
 
 async function callUserApi(action, payload = {}) {
@@ -242,7 +242,7 @@ export function showToast(message, type = 'info') {
 export async function getQuestProgress(userId, today, families) {
 	if (!supabase) return null
 
-	// 1. ЛОГИ ЗА СЕГОДНЯ (для личного задания)
+	// 1. ЛОГИ ЗА СЕГОДНЯ
 	const { data: logs } = await supabase
 		.from('water_logs')
 		.select('amount_ml, logged_at')
@@ -254,8 +254,7 @@ export async function getQuestProgress(userId, today, families) {
 	const logCount = safeLogs.length
 	const waterGoal = 2100
 
-	// 2. ВЫБИРАЕМ РОВНО 1 ПЕРСОНАЛЬНОЕ ЗАДАНИЕ НА ДЕНЬ
-	// Используем дату (Год, Месяц, День) в качестве сида, чтобы каждый день было новое задание
+	// 2. ВЫБОР 1 ПЕРСОНАЛЬНОГО ЗАДАНИЯ
 	const todayDate = new Date(today)
 	const dateSeed =
 		todayDate.getFullYear() * 10000 +
@@ -292,9 +291,16 @@ export async function getQuestProgress(userId, today, families) {
 	} else if (personalQuestDef.type === 'single_log_400') {
 		pProgress = safeLogs.some(l => l.amount_ml >= 400) ? 1 : 0
 		pDone = pProgress >= personalQuestDef.goal
-	} else if (personalQuestDef.type === 'complete_goal') {
+	} else if (
+		personalQuestDef.type === 'complete_goal' ||
+		personalQuestDef.type === 'total_ml'
+	) {
 		pProgress = totalDrunk
-		pDone = pProgress >= waterGoal
+		pDone =
+			pProgress >=
+			(personalQuestDef.type === 'complete_goal'
+				? waterGoal
+				: personalQuestDef.goal)
 	}
 
 	const personalQuest = {
@@ -303,7 +309,7 @@ export async function getQuestProgress(userId, today, families) {
 		done: pDone
 	}
 
-	// 3. СЕМЕЙНЫЕ ЗАДАНИЯ (только если есть семья)
+	// 3. СЕМЕЙНЫЕ ЗАДАНИЯ
 	let familyQuests = []
 
 	if (families && families.length > 0) {
@@ -337,7 +343,6 @@ export async function getQuestProgress(userId, today, families) {
 			.select('amount_ml')
 			.in('user_id', allMemberIds)
 			.gte('logged_at', startOfWeek.toISOString())
-
 		const { data: monthLogs } = await supabase
 			.from('water_logs')
 			.select('amount_ml')
@@ -355,6 +360,18 @@ export async function getQuestProgress(userId, today, families) {
 			if (q.period === 'week') progress = weekTotal
 			if (q.period === 'month') progress = monthTotal
 
+			if (q.type === 'family_all_goal') {
+				let allDone = true
+				families.forEach(fam => {
+					fam.members
+						.filter(m => m.status === 'accepted')
+						.forEach(m => {
+							if (m.progress < 100) allDone = false
+						})
+				})
+				progress = allDone ? 1 : 0
+			}
+
 			return {
 				...q,
 				progress: Math.min(progress, q.goal),
@@ -363,8 +380,5 @@ export async function getQuestProgress(userId, today, families) {
 		})
 	}
 
-	return {
-		personal: personalQuest,
-		family: familyQuests
-	}
+	return { personal: personalQuest, family: familyQuests }
 }
