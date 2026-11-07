@@ -234,45 +234,124 @@ export function showToast(message, type = 'info') {
 // ==========================================
 
 export async function getQuestProgress(userId, today, families) {
-  if (!supabase) return null;
+	if (!supabase) return null
 
-  // 1. Считаем личную воду
-  const { data: logs } = await supabase.from('water_logs')
-    .select('amount_ml, logged_at')
-    .eq('user_id', userId)
-    .gte('logged_at', new Date(`${today}T00:00:00+03:00`).toISOString());
+	// 1. Считаем личную воду
+	const { data: logs } = await supabase
+		.from('water_logs')
+		.select('amount_ml, logged_at')
+		.eq('user_id', userId)
+		.gte('logged_at', new Date(`${today}T00:00:00+03:00`).toISOString())
 
-  const totalDrunk = (logs || []).reduce((sum, log) => sum + log.amount_ml, 0);
-  const logCount = logs ? logs.length : 0;
+	const totalDrunk = (logs || []).reduce((sum, log) => sum + log.amount_ml, 0)
+	const logCount = logs ? logs.length : 0
 
-  // 2. Задание "Ранняя пташка" (выпить 500 мл до 12:00)
-  const moscowHour = new Date().getUTCHours() + 3; // Примерное время МСК
-  const earlyLogs = (logs || []).filter(l => {
-    let raw = l.logged_at;
-    if (!raw.includes('Z') && !raw.includes('+')) raw += 'Z';
-    const h = new Date(raw).getUTCHours() + 3;
-    return h < 12;
-  });
-  const earlyTotal = earlyLogs.reduce((sum, log) => sum + log.amount_ml, 0);
-  const earlyBirdDone = earlyTotal >= 500;
+	// 2. Задание "Ранняя пташка" (выпить 500 мл до 12:00)
+	const moscowHour = new Date().getUTCHours() + 3 // Примерное время МСК
+	const earlyLogs = (logs || []).filter(l => {
+		let raw = l.logged_at
+		if (!raw.includes('Z') && !raw.includes('+')) raw += 'Z'
+		const h = new Date(raw).getUTCHours() + 3
+		return h < 12
+	})
+	const earlyTotal = earlyLogs.reduce((sum, log) => sum + log.amount_ml, 0)
+	const earlyBirdDone = earlyTotal >= 500
 
-  // 3. Задание "Марафонец" (сделать 5 записей)
-  const marathonDone = logCount >= 5;
+	// 3. Задание "Марафонец" (сделать 5 записей)
+	const marathonDone = logCount >= 5
 
-  // 4. Семейный сундук (вся семья выпила 10 000 мл)
-  let familyTotal = 0;
-  if (families && families.length > 0) {
-    families.forEach(fam => {
-      fam.members.forEach(m => {
-        familyTotal += m.drank_today;
-      });
-    });
-  }
-  const familyChestDone = familyTotal >= 10000;
+	// 4. Семейный сундук (вся семья выпила 10 000 мл)
+	let familyTotal = 0
+	if (families && families.length > 0) {
+		families.forEach(fam => {
+			fam.members.forEach(m => {
+				familyTotal += m.drank_today
+			})
+		})
+	}
+	const familyChestDone = familyTotal >= 10000
 
-  return {
-    earlyBird: { done: earlyBirdDone, progress: Math.min(earlyTotal, 500), goal: 500, reward: 5 },
-    marathon: { done: marathonDone, progress: Math.min(logCount, 5), goal: 5, reward: 3 },
-    familyChest: { done: familyChestDone, progress: Math.min(familyTotal, 10000), goal: 10000, reward: 15 }
-  };
+	return {
+		earlyBird: {
+			done: earlyBirdDone,
+			progress: Math.min(earlyTotal, 500),
+			goal: 500,
+			reward: 5
+		},
+		marathon: {
+			done: marathonDone,
+			progress: Math.min(logCount, 5),
+			goal: 5,
+			reward: 3
+		},
+		familyChest: {
+			done: familyChestDone,
+			progress: Math.min(familyTotal, 10000),
+			goal: 10000,
+			reward: 15
+		}
+	}
+}
+// Функция для вызова всплывающих уведомлений
+export function showToast(message, type = 'info') {
+	window.dispatchEvent(
+		new CustomEvent('app-toast', { detail: { message, type } })
+	)
+}
+
+// ЛОГИКА ЕЖЕДНЕВНЫХ ЗАДАНИЙ
+export async function getQuestProgress(userId, today, families) {
+	if (!supabase) return null
+
+	const { data: logs } = await supabase
+		.from('water_logs')
+		.select('amount_ml, logged_at')
+		.eq('user_id', userId)
+		.gte('logged_at', new Date(`${today}T00:00:00+03:00`).toISOString())
+
+	const totalDrunk = (logs || []).reduce((sum, log) => sum + log.amount_ml, 0)
+	const logCount = logs ? logs.length : 0
+
+	const moscowHour = new Date().getUTCHours() + 3
+	const earlyLogs = (logs || []).filter(l => {
+		let raw = l.logged_at
+		if (!raw.includes('Z') && !raw.includes('+')) raw += 'Z'
+		const h = new Date(raw).getUTCHours() + 3
+		return h < 12
+	})
+	const earlyTotal = earlyLogs.reduce((sum, log) => sum + log.amount_ml, 0)
+	const earlyBirdDone = earlyTotal >= 500
+
+	const marathonDone = logCount >= 5
+
+	let familyTotal = 0
+	if (families && families.length > 0) {
+		families.forEach(fam => {
+			fam.members.forEach(m => {
+				familyTotal += m.drank_today
+			})
+		})
+	}
+	const familyChestDone = familyTotal >= 10000
+
+	return {
+		earlyBird: {
+			done: earlyBirdDone,
+			progress: Math.min(earlyTotal, 500),
+			goal: 500,
+			reward: 5
+		},
+		marathon: {
+			done: marathonDone,
+			progress: Math.min(logCount, 5),
+			goal: 5,
+			reward: 3
+		},
+		familyChest: {
+			done: familyChestDone,
+			progress: Math.min(familyTotal, 10000),
+			goal: 10000,
+			reward: 15
+		}
+	}
 }

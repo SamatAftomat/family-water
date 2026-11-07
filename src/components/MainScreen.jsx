@@ -27,11 +27,10 @@ import TodayTab from './tabs/TodayTab'
 import DiaryTab from './tabs/DiaryTab'
 import AnalyticsTab from './tabs/AnalyticsTab'
 import FamilyTab from './tabs/FamilyTab'
-import QuestsTab from './tabs/QuestsTab' // НОВЫЙ ИМПОРТ
+import QuestsTab from './tabs/QuestsTab'
 import RewardModal from './modals/RewardModal'
 import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
-import ShopModal from './modals/ShopModal'
 
 const todayKey = () => {
 	const d = new Date()
@@ -45,7 +44,7 @@ function MainScreen() {
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
 	const [chartTotals, setChartTotals] = useState({})
-	const [quests, setQuests] = useState(null) // Стейт для заданий
+	const [quests, setQuests] = useState(null)
 	const [isLoading, setIsLoading] = useState(true)
 	const [isAdding, setIsAdding] = useState(false)
 
@@ -54,7 +53,6 @@ function MainScreen() {
 	const [showCustom, setShowCustom] = useState(false)
 	const [settings, setSettings] = useState(false)
 	const [activeInfo, setActiveInfo] = useState(null)
-	const [showShop, setShowShop] = useState(false)
 	const [isDark, setIsDark] = useState(
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
@@ -72,7 +70,7 @@ function MainScreen() {
 	const touchStart = useRef({ x: 0, y: 0 })
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
-	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests'] // ДОБАВИЛИ КВЕСТЫ
+	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests']
 
 	useEffect(() => {
 		const handleToast = e => {
@@ -179,7 +177,6 @@ function MainScreen() {
 		const invs = await getMyInvites(userId)
 		setFamilies(fams)
 		setInvites(invs)
-		// Обновляем задания, так как семейный прогресс изменился
 		const q = await getQuestProgress(userId, today, fams)
 		setQuests(q)
 	}
@@ -298,7 +295,6 @@ function MainScreen() {
 			)
 			showToast(`+${value} мл добавлено! 💧`, 'success')
 
-			// Пересчитываем задания после добавления воды
 			const q = await getQuestProgress(userId, today, families)
 			setQuests(q)
 		} catch (err) {
@@ -447,7 +443,6 @@ function MainScreen() {
 		setFamilyLoading(false)
 	}
 
-	// Пока просто уведомление, так как клейм мы пока не написали (понадобится отдельная таблица)
 	async function handleClaimQuest(questId, reward) {
 		showToast(`Получено ${reward} алмазов! (В разработке)`, 'success')
 	}
@@ -577,7 +572,7 @@ function MainScreen() {
 				<div
 					ref={diamondTargetRef}
 					className={diamondPop ? 'pop-anim' : ''}
-					onClick={() => setShowShop(true)}
+					onClick={() => setActiveInfo('diamonds')}
 				>
 					<span>✦</span>
 					<strong>{profile?.diamonds || 0}</strong>
@@ -649,7 +644,6 @@ function MainScreen() {
 				)}
 			</div>
 
-			{/* ТЕПЕРЬ 5 ВКЛАДОК ВНИЗУ */}
 			<nav
 				className="bottom-nav"
 				style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}
@@ -705,11 +699,6 @@ function MainScreen() {
 				setActiveInfo={setActiveInfo}
 				goal={goal}
 				total={total}
-			/>
-			<ShopModal
-				show={showShop}
-				onClose={() => setShowShop(false)}
-				diamonds={profile?.diamonds || 0}
 			/>
 		</main>
 	)
