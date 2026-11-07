@@ -4,9 +4,9 @@ import achievementsData from '../../data/achievements.json'
 export default function QuestsTab({
 	quests,
 	handleClaimQuest,
-	achievements,
+	achievements = [],
 	handleClaimAch,
-	userStats
+	userStats = {}
 }) {
 	const [activeTab, setActiveTab] = useState('quests')
 
@@ -195,13 +195,17 @@ export default function QuestsTab({
 					>
 						{achievementsData.map(ach => {
 							const isClaimed = achievements.includes(ach.id)
+
 							let progress = 0
-							if (ach.type === 'total_water') progress = userStats.totalWater
-							if (ach.type === 'streak') progress = userStats.streak
-							if (ach.type === 'family_count') progress = userStats.familyCount
+							if (ach.type === 'total_water')
+								progress = userStats?.totalWater || 0
+							if (ach.type === 'streak') progress = userStats?.streak || 0
+							if (ach.type === 'family_count')
+								progress = userStats?.familyCount || 0
 							if (ach.type === 'family_members')
-								progress = userStats.maxFamilyMembers
-							if (ach.type === 'title_bought') progress = userStats.titlesBought
+								progress = userStats?.maxFamilyMembers || 0
+							if (ach.type === 'title_bought')
+								progress = userStats?.titlesBought || 0
 
 							const isDone = progress >= ach.goal
 							const percent = Math.min(
@@ -271,7 +275,8 @@ export default function QuestsTab({
 											justifyContent: 'space-between',
 											fontSize: '12px',
 											color: '#71869d',
-											marginTop: '6px'
+											marginTop: '6px',
+											alignItems: 'center'
 										}}
 									>
 										<span>
