@@ -407,3 +407,50 @@ export async function getQuestProgress(userId, today, families) {
 
 	return { personal: personalQuest, family: familyQuests }
 }
+// ==========================================
+// ИНВЕНТАРЬ И ПОКУПКИ
+// ==========================================
+
+export async function getInventory(userId) {
+	if (!supabase) return []
+	const { data } = await supabase
+		.from('inventory')
+		.select('item_id')
+		.eq('user_id', userId)
+	// Добавляем базовые предметы, которые есть у всех по умолчанию
+	const defaultItems = ['theme_default', 'title_default', 'frame_default']
+	const owned = data ? data.map(i => i.item_id) : []
+	return [...new Set([...defaultItems, ...owned])]
+}
+
+export async function buyItemApi(userId, itemId, price) {
+	if (!supabase) return { error: 'Нет связи с базой' }
+
+	// Проверяем баланс
+	const { data: profile } = await supabase
+		.from('users')
+		.select('diamonds')
+		.eq('id', userId)
+		.single()
+	if (!profile) return { error: 'Профиль не найден' }
+	if (profile.diamonds < price) return { error: 'Недостаточно алмазов!' }
+
+	// Списываем алмазы
+	if (price > 0) {
+		const { error: deductError } = await supabase
+			.from('users')
+			.update({ diamonds: profile.diamonds - price })
+			.eq('id', userId)
+		if (deductError) return { error: 'Ошибка списания алмазов' }
+	}
+
+	// Добавляем в инвентарь
+	const { error: insertError } = await supabase.from('inventory').insert({
+		user_id: userId,
+		item_id: itemId
+	})
+
+	if (insertError) return { error: 'Ошибка добавления в инвентарь' }
+
+	return { success: true, newBalance: profile.diamonds - price }
+}

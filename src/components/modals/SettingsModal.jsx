@@ -11,9 +11,19 @@ export default function SettingsModal({
 	appliedTheme,
 	applyItem,
 	appliedTitle,
-	appliedFrame
+	appliedFrame,
+	ownedItems
 }) {
 	if (!settings) return null
+
+	// Проверяем, заблокирована ли смена темы (если выбрана не стандартная тема)
+	const currentTheme = shopData.themes.find(t => t.cssClass === appliedTheme)
+	const isThemeLocked = currentTheme && currentTheme.id !== 'theme_default'
+
+	// Фильтруем инвентарь (показываем только купленное)
+	const myThemes = shopData.themes.filter(t => ownedItems.includes(t.id))
+	const myTitles = shopData.titles.filter(t => ownedItems.includes(t.id))
+	const myFrames = shopData.frames.filter(f => ownedItems.includes(f.id))
 
 	return (
 		<div
@@ -59,23 +69,27 @@ export default function SettingsModal({
 							disabled
 						/>
 					</label>
+
 					<label
 						style={{
 							flexDirection: 'row',
 							alignItems: 'center',
 							justifyContent: 'space-between',
-							cursor: 'pointer',
-							marginTop: '16px'
+							cursor: isThemeLocked ? 'not-allowed' : 'pointer',
+							marginTop: '16px',
+							opacity: isThemeLocked ? 0.5 : 1
 						}}
 					>
-						<span>Тёмная тема</span>
+						<span>Тёмная тема {isThemeLocked && '(заблокирована темой)'}</span>
 						<input
 							type="checkbox"
 							checked={isDark}
-							onChange={e => setIsDark(e.target.checked)}
+							onChange={e => !isThemeLocked && setIsDark(e.target.checked)}
+							disabled={isThemeLocked}
 							style={{ width: '24px', height: '24px' }}
 						/>
 					</label>
+
 					<button
 						className="primary-action"
 						style={{ marginBottom: '24px' }}
@@ -84,7 +98,6 @@ export default function SettingsModal({
 					</button>
 				</form>
 
-				{/* ИНВЕНТАРЬ */}
 				<div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
 					<h3
 						style={{ fontSize: '16px', marginBottom: '12px', color: '#173f70' }}
@@ -95,7 +108,6 @@ export default function SettingsModal({
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
 					>
-						{/* ФОНЫ */}
 						<div>
 							<div
 								style={{
@@ -114,7 +126,7 @@ export default function SettingsModal({
 									paddingBottom: '8px'
 								}}
 							>
-								{shopData.themes.map(t => (
+								{myThemes.map(t => (
 									<button
 										key={t.id}
 										onClick={() => applyItem(t)}
@@ -137,7 +149,6 @@ export default function SettingsModal({
 							</div>
 						</div>
 
-						{/* ТИТУЛЫ */}
 						<div>
 							<div
 								style={{
@@ -156,7 +167,7 @@ export default function SettingsModal({
 									paddingBottom: '8px'
 								}}
 							>
-								{shopData.titles.map(t => (
+								{myTitles.map(t => (
 									<button
 										key={t.id}
 										onClick={() => applyItem(t)}
@@ -179,7 +190,6 @@ export default function SettingsModal({
 							</div>
 						</div>
 
-						{/* РАМКИ */}
 						<div>
 							<div
 								style={{
@@ -198,7 +208,7 @@ export default function SettingsModal({
 									paddingBottom: '8px'
 								}}
 							>
-								{shopData.frames.map(t => (
+								{myFrames.map(t => (
 									<button
 										key={t.id}
 										onClick={() => applyItem(t)}

@@ -2,7 +2,14 @@ import { useState } from 'react'
 import { showToast } from '../../lib/api'
 import shopData from '../../data/shop.json'
 
-export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
+export default function ShopModal({
+	show,
+	onClose,
+	diamonds,
+	onApplyItem,
+	ownedItems,
+	onBuyItem
+}) {
 	const [activeTab, setActiveTab] = useState('themes')
 	const [spinning, setSpinning] = useState(false)
 	const [wonPrize, setWonPrize] = useState(null)
@@ -10,34 +17,41 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 
 	if (!show) return null
 
-	// Функция покупки (пока бесплатно)
 	const handleBuy = item => {
-		// Если цена 0, то просто применяем
-		onApplyItem(item)
-		showToast(`Куплено: ${item.title}`, 'success')
+		onBuyItem(item)
 	}
 
 	const openCase = c => {
 		if (spinning) return
+		if (diamonds < c.price) return showToast('Недостаточно алмазов!', 'error')
+
 		setSpinning(true)
 		setWonPrize(null)
 		setOpenedCase(c)
 
 		setTimeout(() => {
-			// Выбираем случайный ID из пула кейса
 			const randomId = c.pool[Math.floor(Math.random() * c.pool.length)]
-
-			// Ищем этот предмет во всех категориях
 			let foundItem =
 				shopData.themes.find(t => t.id === randomId) ||
 				shopData.titles.find(t => t.id === randomId) ||
 				shopData.frames.find(f => f.id === randomId)
 
 			setWonPrize(foundItem)
-			onApplyItem(foundItem) // СРАЗУ ПРИМЕНЯЕМ
+			onBuyItem(foundItem, true) // СРАЗУ ПОКУПАЕМ И ПРИМЕНЯЕМ
 			setSpinning(false)
 		}, 2000)
 	}
+
+	// Фильтруем предметы: если уже куплено — не показываем (кроме дефолтных)
+	const availableThemes = shopData.themes.filter(
+		t => !ownedItems.includes(t.id)
+	)
+	const availableTitles = shopData.titles.filter(
+		t => !ownedItems.includes(t.id) && t.id !== 'title_default'
+	)
+	const availableFrames = shopData.frames.filter(
+		f => !ownedItems.includes(f.id)
+	)
 
 	return (
 		<div
@@ -66,9 +80,6 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 					<div style={{ fontSize: '32px' }}>🛍️</div>
 					<div>
 						<h2 style={{ margin: 0 }}>Магазин</h2>
-						<p style={{ margin: 0, fontSize: '13px', color: '#71869d' }}>
-							Всё бесплатно (Тест)
-						</p>
 					</div>
 					<div
 						style={{
@@ -87,7 +98,6 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 					</div>
 				</div>
 
-				{/* Табы */}
 				<div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
 					<button
 						onClick={() => setActiveTab('themes')}
@@ -109,31 +119,33 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 					</button>
 				</div>
 
-				{/* КОНТЕНТ ФОНОВ */}
 				{activeTab === 'themes' && (
 					<div className="shop-grid">
-						{shopData.themes.map(item => (
-							<div
-								key={item.id}
-								className="shop-item"
-							>
-								<div className="shop-icon">{item.icon}</div>
-								<div className="shop-info">
-									<div className="shop-title">{item.title}</div>
-									<div className="shop-desc">{item.desc}</div>
-								</div>
-								<button
-									className="shop-buy-btn"
-									onClick={() => handleBuy(item)}
+						{availableThemes.length === 0 ? (
+							<p className="empty-note">Все фоны куплены!</p>
+						) : (
+							availableThemes.map(item => (
+								<div
+									key={item.id}
+									className="shop-item"
 								>
-									Купить
-								</button>
-							</div>
-						))}
+									<div className="shop-icon">{item.icon}</div>
+									<div className="shop-info">
+										<div className="shop-title">{item.title}</div>
+										<div className="shop-desc">{item.desc}</div>
+									</div>
+									<button
+										className="shop-buy-btn"
+										onClick={() => handleBuy(item)}
+									>
+										{item.price > 0 ? `${item.price} ✦` : 'Купить'}
+									</button>
+								</div>
+							))
+						)}
 					</div>
 				)}
 
-				{/* КОНТЕНТ СТИЛЯ (Титулы и Рамки) */}
 				{activeTab === 'style' && (
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
@@ -149,23 +161,27 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 								Титулы
 							</h3>
 							<div className="shop-grid">
-								{shopData.titles.map(item => (
-									<div
-										key={item.id}
-										className="shop-item"
-									>
-										<div className="shop-icon">{item.icon}</div>
-										<div className="shop-info">
-											<div className="shop-title">{item.title}</div>
-										</div>
-										<button
-											className="shop-buy-btn"
-											onClick={() => handleBuy(item)}
+								{availableTitles.length === 0 ? (
+									<p className="empty-note">Все титулы куплены!</p>
+								) : (
+									availableTitles.map(item => (
+										<div
+											key={item.id}
+											className="shop-item"
 										>
-											Купить
-										</button>
-									</div>
-								))}
+											<div className="shop-icon">{item.icon}</div>
+											<div className="shop-info">
+												<div className="shop-title">{item.title}</div>
+											</div>
+											<button
+												className="shop-buy-btn"
+												onClick={() => handleBuy(item)}
+											>
+												{item.price > 0 ? `${item.price} ✦` : 'Купить'}
+											</button>
+										</div>
+									))
+								)}
 							</div>
 						</div>
 						<div>
@@ -176,32 +192,35 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 									marginBottom: '8px'
 								}}
 							>
-								Рамки аватара
+								Рамки
 							</h3>
 							<div className="shop-grid">
-								{shopData.frames.map(item => (
-									<div
-										key={item.id}
-										className="shop-item"
-									>
-										<div className="shop-icon">{item.icon}</div>
-										<div className="shop-info">
-											<div className="shop-title">{item.title}</div>
-										</div>
-										<button
-											className="shop-buy-btn"
-											onClick={() => handleBuy(item)}
+								{availableFrames.length === 0 ? (
+									<p className="empty-note">Все рамки куплены!</p>
+								) : (
+									availableFrames.map(item => (
+										<div
+											key={item.id}
+											className="shop-item"
 										>
-											Купить
-										</button>
-									</div>
-								))}
+											<div className="shop-icon">{item.icon}</div>
+											<div className="shop-info">
+												<div className="shop-title">{item.title}</div>
+											</div>
+											<button
+												className="shop-buy-btn"
+												onClick={() => handleBuy(item)}
+											>
+												{item.price > 0 ? `${item.price} ✦` : 'Купить'}
+											</button>
+										</div>
+									))
+								)}
 							</div>
 						</div>
 					</div>
 				)}
 
-				{/* КОНТЕНТ КЕЙСОВ */}
 				{activeTab === 'cases' && (
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
@@ -261,14 +280,13 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 										flexShrink: 0
 									}}
 								>
-									Открыть
+									{c.price > 0 ? `${c.price} ✦` : 'Открыть'}
 								</button>
 							</div>
 						))}
 					</div>
 				)}
 
-				{/* АНИМАЦИЯ РУЛЕТКИ */}
 				{spinning && (
 					<div
 						style={{
@@ -299,7 +317,6 @@ export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
 					</div>
 				)}
 
-				{/* РЕЗУЛЬТАТ */}
 				{wonPrize && !spinning && (
 					<div
 						style={{
