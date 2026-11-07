@@ -58,7 +58,7 @@
 			"id": "theme_ice",
 			"title": "Лед",
 			"icon": "🧊",
-			"price": 1,
+			"price": 50,
 			"desc": "Холодный минимализм",
 			"cssClass": "theme-ice",
 			"themeMode": "light"
@@ -67,7 +67,7 @@
 			"id": "theme_matrix",
 			"title": "Матрица",
 			"icon": "🟩",
-			"price": 1,
+			"price": 150,
 			"desc": "Зеленый код",
 			"cssClass": "theme-matrix",
 			"themeMode": "dark"
