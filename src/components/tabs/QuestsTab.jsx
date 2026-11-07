@@ -12,17 +12,19 @@ export default function QuestsTab({ quests, handleClaimQuest }) {
 			<p className="eyebrow">ЗАРАБОТАЙ АЛМАЗЫ</p>
 			<h2>Задания</h2>
 
-			{/* ЛИЧНОЕ ЗАДАНИЕ */}
+			{/* ЛИЧНОЕ ЗАДАНИЕ (ТОЛЬКО 1) */}
 			<div style={{ marginTop: '16px' }}>
 				<h3 style={{ fontSize: '15px', color: '#1886ad', marginBottom: '8px' }}>
 					📌 Личное (на сегодня)
 				</h3>
 				<div className="quest-card">
+					{/* ДОБАВИЛИ alignItems: 'center' */}
 					<div
 						style={{
 							display: 'flex',
 							justifyContent: 'space-between',
-							marginBottom: '8px'
+							alignItems: 'center',
+							marginBottom: '12px'
 						}}
 					>
 						<div>
@@ -65,7 +67,7 @@ export default function QuestsTab({ quests, handleClaimQuest }) {
 			</div>
 
 			{/* СЕМЕЙНЫЕ ЗАДАНИЯ */}
-			{quests.family.length > 0 ? (
+			{quests.family && quests.family.length > 0 ? (
 				<div style={{ marginTop: '24px' }}>
 					<h3
 						style={{ fontSize: '15px', color: '#c49b00', marginBottom: '8px' }}
@@ -81,11 +83,13 @@ export default function QuestsTab({ quests, handleClaimQuest }) {
 								className="quest-card"
 								style={{ border: '2px solid #fdcb6e' }}
 							>
+								{/* ДОБАВИЛИ alignItems: 'center' */}
 								<div
 									style={{
 										display: 'flex',
 										justifyContent: 'space-between',
-										marginBottom: '8px'
+										alignItems: 'center',
+										marginBottom: '12px'
 									}}
 								>
 									<div>

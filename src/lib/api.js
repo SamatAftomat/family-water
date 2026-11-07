@@ -69,7 +69,7 @@ export async function getLast7DaysTotal(userId) {
 }
 
 // ==========================================
-// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ВОДА И ПРОФИЛЬ)
+// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ЧЕРЕЗ API)
 // ==========================================
 
 async function callUserApi(action, payload = {}) {
@@ -254,12 +254,15 @@ export async function getQuestProgress(userId, today, families) {
 	const logCount = safeLogs.length
 	const waterGoal = 2100
 
-	// 2. ВЫБИРАЕМ 1 ПЕРСОНАЛЬНОЕ ЗАДАНИЕ НА ДЕНЬ (ротация по дню года)
-	const dayOfYear = Math.floor(
-		(Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000
-	)
+	// 2. ВЫБИРАЕМ РОВНО 1 ПЕРСОНАЛЬНОЕ ЗАДАНИЕ НА ДЕНЬ
+	// Используем дату (Год, Месяц, День) в качестве сида, чтобы каждый день было новое задание
+	const todayDate = new Date(today)
+	const dateSeed =
+		todayDate.getFullYear() * 10000 +
+		(todayDate.getMonth() + 1) * 100 +
+		todayDate.getDate()
 	const personalQuestDef =
-		questsData.personalQuests[dayOfYear % questsData.personalQuests.length]
+		questsData.personalQuests[dateSeed % questsData.personalQuests.length]
 
 	let pProgress = 0
 	let pDone = false

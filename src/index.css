@@ -1082,3 +1082,17 @@ body {
 	border-radius: 4px;
 	transition: width 0.3s ease;
 }
+.quest-reward {
+  background: #eef5fb;
+  color: #1886ad;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  flex-shrink: 0;
+  /* ВОТ ЭТИ ТРИ СТРОЧКИ ЦЕНТРИРУЮТ ТЕКСТ ВНУТРИ БЛОКА */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+}
