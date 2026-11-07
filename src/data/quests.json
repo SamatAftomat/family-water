@@ -33,7 +33,7 @@
 		{
 			"id": "steady_pace",
 			"title": "Ровный темп",
-			"description": "Выпей по стакану (200 мл) 3 раза за день",
+			"description": "Выпей 3 стакана по 200 мл",
 			"type": "exact_200_logs",
 			"goal": 3,
 			"unit": "раз",
@@ -53,7 +53,7 @@
 		{
 			"id": "goal_reacher",
 			"title": "Точно в цель",
-			"description": "Выполни свою дневную норму воды",
+			"description": "Выполни свою дневную норму",
 			"type": "complete_goal",
 			"goal": 100,
 			"unit": "%",
@@ -63,24 +63,37 @@
 	],
 	"familyQuests": [
 		{
-			"id": "family_chest_10k",
-			"title": "Семейный сундук",
-			"description": "Вся семья вместе выпила 10 литров",
-			"type": "family_total",
-			"goal": 10000,
+			"id": "weekly_sprint",
+			"title": "Недельный спринт",
+			"description": "Вся семья выпила 30 литров за неделю",
+			"type": "family_ml",
+			"period": "week",
+			"goal": 30000,
 			"unit": "мл",
-			"reward": 15,
-			"icon": "🎁"
+			"reward": 20,
+			"icon": "🏃"
 		},
 		{
-			"id": "family_sync",
-			"title": "Синхронность",
-			"description": "Выпейте воду одновременно с кем-то из семьи",
-			"type": "sync",
-			"goal": 1,
-			"unit": "раз",
-			"reward": 10,
-			"icon": "🤝"
+			"id": "weekly_marathon",
+			"title": "Недельный марафон",
+			"description": "Вся семья выпила 60 литров за неделю",
+			"type": "family_ml",
+			"period": "week",
+			"goal": 60000,
+			"unit": "мл",
+			"reward": 50,
+			"icon": "🏆"
+		},
+		{
+			"id": "monthly_legend",
+			"title": "Месячная легенда",
+			"description": "Вся семья выпила 200 литров за месяц",
+			"type": "family_ml",
+			"period": "month",
+			"goal": 200000,
+			"unit": "мл",
+			"reward": 200,
+			"icon": "💎"
 		}
 	]
 }
