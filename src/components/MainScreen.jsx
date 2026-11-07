@@ -61,7 +61,6 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
-	// ИНВЕНТАРЬ И ПРИМЕНЕННЫЕ ВЕЩИ
 	const [ownedItems, setOwnedItems] = useState([])
 	const [appliedTheme, setAppliedTheme] = useState(
 		() => localStorage.getItem('applied_theme') || ''
@@ -89,15 +88,12 @@ function MainScreen() {
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests']
 
-	// ПРИМЕНЕНИЕ ПРЕДМЕТА (С ЛОГИКОЙ ТЕМ)
 	const applyItem = item => {
 		if (item.id.startsWith('theme_')) {
 			setAppliedTheme(item.cssClass)
 			localStorage.setItem('applied_theme', item.cssClass)
-
 			if (item.themeMode === 'dark') setIsDark(true)
 			else if (item.themeMode === 'light') setIsDark(false)
-			// Если 'universal', то мы не трогаем текущий режим
 		} else if (item.id.startsWith('title_')) {
 			if (item.id === 'title_default') {
 				setAppliedTitle(null)
@@ -112,22 +108,16 @@ function MainScreen() {
 		}
 	}
 
-	// РЕАЛЬНАЯ ПОКУПКА
 	const handleBuyItem = async (item, isCase = false) => {
-		const price = isCase ? item.price || 0 : item.price || 0
-
+		const price = item.price || 0
 		const res = await buyItemApi(userId, item.id, price)
 		if (res.error) {
 			showToast(res.error, 'error')
 			return
 		}
-
-		// Если куплено успешно
 		showToast(`Куплено: ${item.title}`, 'success')
-		applyItem(item) // Сразу применяем
+		applyItem(item)
 		setOwnedItems(prev => [...prev, item.id])
-
-		// Обновляем профиль, чтобы обновить счетчик алмазов
 		const updatedProfile = await getUserProfile(userId)
 		setProfile(updatedProfile)
 	}
@@ -247,7 +237,7 @@ function MainScreen() {
 				const dbProfile = await getUserProfile(userId)
 				const dbLogs = await getTodayLogs(userId, today)
 				const totals7Days = await getLast7DaysTotal(userId)
-				const inv = await getInventory(userId) // Загружаем инвентарь
+				const inv = await getInventory(userId)
 
 				if (dbProfile) setProfile(dbProfile)
 				else
@@ -298,9 +288,234 @@ function MainScreen() {
 		localStorage.setItem('family-water-theme', isDark ? 'dark' : 'light')
 	}, [isDark])
 
-	// ... (ОСТАЛЬНЫЕ ФУНКЦИИ: addWater, removeLog, clearAllLogs, saveSettings, shareId, handleCreateFamily и т.д. ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ) ...
+	async function addWater(amount) {
+		const value = Number(amount)
+		if (!Number.isFinite(value) || value <= 0) return
+		if (value > 2000)
+			return showToast('Слишком много за один раз! Максимум 2000 мл.', 'error')
+		if (total + value > 5000)
+			return showToast('Вы превысили суточный лимит в 5000 мл!', 'error')
+		if (isAdding) return
 
-	// (Для экономии места я пропустил их в этом блоке, НО В ФАЙЛЕ ОНИ ДОЛЖНЫ БЫТЬ, возьми их из прошлой версии)
+		const previousLogs = [...logs]
+		const previousProfile = { ...profile }
+
+		const tempId = `temp-${Date.now()}`
+		const newLog = {
+			id: tempId,
+			amount: value,
+			time: new Date().toLocaleTimeString('ru-RU', {
+				hour: '2-digit',
+				minute: '2-digit',
+				timeZone: 'Europe/Moscow'
+			}),
+			date: today
+		}
+
+		setLogs([newLog, ...logs])
+		setCustomAmount('')
+		setShowCustom(false)
+		setIsAdding(true)
+
+		const wasComplete = total >= goal
+		const isCompleteNow = total + value >= goal
+
+		if (!wasComplete && isCompleteNow) {
+			if (window.Telegram?.WebApp?.HapticFeedback)
+				window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
+			confetti({
+				particleCount: 150,
+				spread: 80,
+				origin: { y: 0.6 },
+				colors: ['#0ba360', '#3cba92', '#25b2c1', '#4facfe', '#ffffff']
+			})
+			setShowReward(true)
+		}
+
+		try {
+			await addWaterToDb(userId, value, profile)
+			const updatedProfile = await getUserProfile(userId)
+			const updatedLogs = await getTodayLogs(userId, today)
+			const totals7Days = await getLast7DaysTotal(userId)
+
+			setProfile(updatedProfile)
+			setLogs(updatedLogs)
+			setChartTotals(totals7Days)
+			localStorage.setItem(
+				'family-water-profile',
+				JSON.stringify(updatedProfile)
+			)
+			showToast(`+${value} мл добавлено! 💧`, 'success')
+
+			const q = await getQuestProgress(userId, today, families)
+			setQuests(q)
+		} catch (err) {
+			setLogs(previousLogs)
+			setProfile(previousProfile)
+			showToast(err.message, 'error')
+		} finally {
+			setIsAdding(false)
+		}
+	}
+
+	const handleClaimReward = () => {
+		setShowReward(false)
+		const targetEl = diamondTargetRef.current
+		if (!targetEl) return
+		const targetRect = targetEl.getBoundingClientRect()
+		const flyer = document.createElement('div')
+		flyer.innerText = '✦'
+		flyer.style.cssText = `position: fixed; color: #c49b00; font-size: 40px; z-index: 9999; pointer-events: none; transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); text-shadow: 0 4px 10px rgba(196, 155, 0, 0.5); left: ${window.innerWidth / 2}px; top: ${window.innerHeight / 2}px; transform: translate(-50%, -50%) scale(1.5);`
+		document.body.appendChild(flyer)
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				flyer.style.left = `${targetRect.left + targetRect.width / 2}px`
+				flyer.style.top = `${targetRect.top + targetRect.height / 2}px`
+				flyer.style.transform = 'translate(-50%, -50%) scale(0.5)'
+			})
+		})
+		setTimeout(() => {
+			flyer.remove()
+			setDiamondPop(true)
+			setTimeout(() => setDiamondPop(false), 300)
+		}, 800)
+	}
+
+	async function removeLog(id) {
+		if (!window.confirm('Удалить эту запись?')) return
+		await deleteLogFromDb(id)
+		setLogs(current => current.filter(log => log.id !== id))
+		setChartTotals(await getLast7DaysTotal(userId))
+		showToast('Запись удалена', 'info')
+	}
+
+	async function clearAllLogs() {
+		if (!window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?'))
+			return
+		const startOfDayISO = new Date(`${today}T00:00:00+03:00`).toISOString()
+		await clearTodayLogs(startOfDayISO)
+		setLogs([])
+		setChartTotals(await getLast7DaysTotal(userId))
+		showToast('Все записи за сегодня удалены', 'info')
+	}
+
+	async function saveSettings(event) {
+		event.preventDefault()
+		const form = new FormData(event.currentTarget)
+		const name = String(form.get('name') || '').trim()
+		const weight = Number(form.get('weight'))
+		if (!name || !weight || weight <= 0)
+			return showToast('Введите корректные данные', 'error')
+
+		const updated = {
+			...profile,
+			first_name: name,
+			weight_kg: weight,
+			water_goal_ml: weight * 30
+		}
+		setProfile(updated)
+		localStorage.setItem('family-water-profile', JSON.stringify(updated))
+		setSettings(false)
+
+		await updateProfileDb(name, weight)
+		showToast('Профиль обновлен', 'success')
+	}
+
+	function shareId() {
+		const text = `Добавь меня в семейный трекер воды! Мой ID: ${userId}`
+		const tg = window.Telegram?.WebApp
+		if (tg && tg.openTelegramLink)
+			tg.openTelegramLink(
+				`https://t.me/share/url?url=${encodeURIComponent(text)}`
+			)
+		else
+			navigator.clipboard
+				?.writeText(text)
+				.then(() => showToast(`ID скопирован!`, 'success'))
+	}
+
+	async function handleCreateFamily(name) {
+		if (!name.trim()) return
+		setFamilyLoading(true)
+		const res = await createFamily(userId, name)
+		if (res.error) showToast(res.error, 'error')
+		else {
+			await loadFamilies()
+			showToast('Группа создана!', 'success')
+		}
+		setFamilyLoading(false)
+	}
+
+	async function handleInvite(familyId, inviteeId, familyName) {
+		if (!inviteeId) return
+		setFamilyLoading(true)
+		const res = await inviteToFamily(
+			familyId,
+			Number(inviteeId),
+			profile.first_name,
+			familyName
+		)
+		if (res.error) showToast(res.error, 'error')
+		else {
+			showToast('Приглашение отправлено!', 'success')
+			await loadFamilies()
+		}
+		setFamilyLoading(false)
+	}
+
+	async function handleAcceptInvite(familyId) {
+		setFamilyLoading(true)
+		await acceptFamilyInvite(familyId, userId)
+		await loadFamilies()
+		showToast('Вы вступили в группу!', 'success')
+		setFamilyLoading(false)
+	}
+
+	async function handleDeleteFamily(familyId) {
+		setFamilyLoading(true)
+		await deleteFamily(familyId)
+		await loadFamilies()
+		showToast('Группа удалена', 'info')
+		setFamilyLoading(false)
+	}
+
+	async function handleKickMember(familyId, memberId) {
+		setFamilyLoading(true)
+		await kickFromFamily(familyId, memberId)
+		await loadFamilies()
+		showToast('Участник удален', 'info')
+		setFamilyLoading(false)
+	}
+
+	async function handleRenameFamily(familyId, newName) {
+		setFamilyLoading(true)
+		await renameFamily(familyId, newName)
+		await loadFamilies()
+		showToast('Название изменено', 'success')
+		setFamilyLoading(false)
+	}
+
+	async function handleClaimQuest(questId, reward) {
+		showToast(`Получено ${reward} алмазов! (В разработке)`, 'success')
+	}
+
+	const weekData = useMemo(
+		() =>
+			Array.from({ length: 7 }, (_, index) => {
+				const date = new Date()
+				date.setDate(date.getDate() - (6 - index))
+				const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+				return {
+					key,
+					label: date.toLocaleDateString('ru-RU', { weekday: 'short' }),
+					total: key === today ? total : chartTotals[key] || 0
+				}
+			}),
+		[logs, today, total, chartTotals]
+	)
+
+	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
+	const weekAverage = Math.round(weekTotal / 7)
 
 	if (!isTelegram) {
 		return (
@@ -396,7 +611,6 @@ function MainScreen() {
 			</section>
 
 			<div className="swipe-container">
-				{/* ТАБЫ (TodayTab, DiaryTab, AnalyticsTab, FamilyTab, QuestsTab) ОСТАЮТСЯ БЕЗ ИЗМЕНЕНИЙ */}
 				{tab === 'today' && (
 					<TodayTab
 						total={total}
@@ -509,7 +723,7 @@ function MainScreen() {
 				applyItem={applyItem}
 				appliedTitle={appliedTitle}
 				appliedFrame={appliedFrame}
-				ownedItems={ownedItems} // ПЕРЕДАЕМ ИНВЕНТАРЬ
+				ownedItems={ownedItems}
 			/>
 
 			<InfoModal
@@ -524,8 +738,8 @@ function MainScreen() {
 				onClose={() => setShowShop(false)}
 				diamonds={profile?.diamonds || 0}
 				onApplyItem={applyItem}
-				ownedItems={ownedItems} // ПЕРЕДАЕМ ИНВЕНТАРЬ
-				onBuyItem={handleBuyItem} // ПЕРЕДАЕМ ФУНКЦИЮ ПОКУПКИ
+				ownedItems={ownedItems}
+				onBuyItem={handleBuyItem}
 			/>
 		</main>
 	)
