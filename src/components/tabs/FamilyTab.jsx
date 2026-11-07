@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { showToast } from '../../lib/api'
+import shopData from '../../data/shop.json'
 
 export default function FamilyTab({
 	userId,
@@ -13,8 +14,7 @@ export default function FamilyTab({
 	handleKickMember,
 	handleRenameFamily,
 	familyLoading,
-	appliedFrame,
-	appliedTitle
+	onMemberClick // ДОБАВИЛИ КЛИК
 }) {
 	const [newFamilyName, setNewFamilyName] = useState('')
 	const [inviteId, setInviteId] = useState('')
@@ -34,8 +34,7 @@ export default function FamilyTab({
 
 	const getAvatarColor = name => {
 		if (!name) return 0
-		const charCode = name.charCodeAt(0) + (name.length || 0)
-		return charCode % 6
+		return (name.charCodeAt(0) + (name.length || 0)) % 6
 	}
 
 	return (
@@ -203,20 +202,34 @@ export default function FamilyTab({
 							{fam.members.map(m => {
 								if (m.status !== 'accepted' && m.user_id !== userId) return null
 								const colorClass = `avatar-color-${getAvatarColor(m.first_name)}`
-								const frameClass = m.user_id === userId ? appliedFrame : ''
-								const title = m.user_id === userId ? appliedTitle : null
+								const frameClass = m.active_frame_css || ''
+								const titleObj = shopData.titles.find(
+									t => t.id === m.active_title_id
+								)
 
 								return (
 									<div
 										key={m.id}
+										onClick={() => onMemberClick(m)} // ДОБАВИЛИ КЛИК
 										style={{
 											display: 'flex',
 											flexDirection: 'column',
 											gap: '8px',
 											padding: '10px',
 											background: '#f8fafc',
-											borderRadius: '12px'
+											borderRadius: '12px',
+											cursor: 'pointer',
+											transition: 'transform 0.1s'
 										}}
+										onMouseDown={e =>
+											(e.currentTarget.style.transform = 'scale(0.98)')
+										}
+										onMouseUp={e =>
+											(e.currentTarget.style.transform = 'scale(1)')
+										}
+										onMouseLeave={e =>
+											(e.currentTarget.style.transform = 'scale(1)')
+										}
 									>
 										<div
 											style={{
@@ -252,10 +265,9 @@ export default function FamilyTab({
 													{m.first_name} {m.role === 'owner' && '👑'}{' '}
 													{m.user_id === userId && '(Вы)'}
 												</div>
-												{/* ТИТУЛ В СЕМЬЕ */}
-												{title && title.title !== 'Без титула' && (
+												{titleObj && titleObj.id !== 'title_default' && (
 													<div
-														className={`user-title ${title.cssClass}`}
+														className={`user-title ${titleObj.cssClass}`}
 														style={{
 															fontSize: '10px',
 															padding: '1px 6px',
@@ -263,7 +275,7 @@ export default function FamilyTab({
 															display: 'inline-block'
 														}}
 													>
-														{title.icon} {title.title}
+														{titleObj.icon} {titleObj.title}
 													</div>
 												)}
 												<div
@@ -434,10 +446,7 @@ export default function FamilyTab({
 
 						<button
 							onClick={() => {
-								const newName = prompt(
-									'Новое название группы:',
-									settingsFamily.name
-								)
+								const newName = prompt('Новое название:', settingsFamily.name)
 								if (newName && newName.trim()) {
 									handleRenameFamily(settingsFamily.id, newName)
 									setSettingsFamily(null)

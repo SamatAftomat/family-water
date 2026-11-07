@@ -22,7 +22,8 @@ import {
 	getInventory,
 	buyItemApi,
 	getClaimedAchievements,
-	claimAchievementApi
+	claimAchievementApi,
+	updateAppearanceDb
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -36,6 +37,7 @@ import RewardModal from './modals/RewardModal'
 import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
 import ShopModal from './modals/ShopModal'
+import ProfileModal from './modals/ProfileModal' // ИМПОРТ ПРОФИЛЯ
 
 const todayKey = () => {
 	const d = new Date()
@@ -63,6 +65,9 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
+	// Стейт для выбранного профиля
+	const [selectedMember, setSelectedMember] = useState(null)
+
 	const [ownedItems, setOwnedItems] = useState([])
 	const [appliedTheme, setAppliedTheme] = useState(
 		() => localStorage.getItem('applied_theme') || ''
@@ -75,7 +80,6 @@ function MainScreen() {
 		() => localStorage.getItem('applied_frame') || ''
 	)
 
-	// Стейты для достижений
 	const [claimedAchs, setClaimedAchs] = useState([])
 	const [userStats, setUserStats] = useState({
 		totalWater: 0,
@@ -101,12 +105,12 @@ function MainScreen() {
 	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests']
 
 	useEffect(() => {
-		const cleaned = localStorage.getItem('inventory_cleaned_v2')
+		const cleaned = localStorage.getItem('inventory_cleaned_v4') // ОБНОВИЛИ ВЕРСИЮ
 		if (!cleaned) {
 			localStorage.removeItem('applied_theme')
 			localStorage.removeItem('applied_title')
 			localStorage.removeItem('applied_frame')
-			localStorage.setItem('inventory_cleaned_v2', 'true')
+			localStorage.setItem('inventory_cleaned_v4', 'true')
 			setAppliedTheme('')
 			setAppliedTitle(null)
 			setAppliedFrame('')
@@ -114,7 +118,7 @@ function MainScreen() {
 		}
 	}, [])
 
-	const applyItem = item => {
+	const applyItem = async item => {
 		if (item.id.startsWith('theme_')) {
 			setAppliedTheme(item.cssClass)
 			localStorage.setItem('applied_theme', item.cssClass)
@@ -124,13 +128,19 @@ function MainScreen() {
 			if (item.id === 'title_default') {
 				setAppliedTitle(null)
 				localStorage.removeItem('applied_title')
+				await updateAppearanceDb('title_default', appliedFrame)
 			} else {
 				setAppliedTitle(item)
 				localStorage.setItem('applied_title', JSON.stringify(item))
+				await updateAppearanceDb(item.id, appliedFrame) // СОХРАНЯЕМ В БАЗУ
 			}
 		} else if (item.id.startsWith('frame_')) {
 			setAppliedFrame(item.cssClass)
 			localStorage.setItem('applied_frame', item.cssClass)
+			await updateAppearanceDb(
+				appliedTitle?.id || 'title_default',
+				item.cssClass
+			) // СОХРАНЯЕМ В БАЗУ
 		}
 	}
 
@@ -147,9 +157,7 @@ function MainScreen() {
 		showToast(`Куплено: ${item.title}`, 'success')
 		applyItem(item)
 
-		if (!ownedItems.includes(item.id)) {
-			setOwnedItems(prev => [...prev, item.id])
-		}
+		if (!ownedItems.includes(item.id)) setOwnedItems(prev => [...prev, item.id])
 
 		const updatedProfile = await getUserProfile(userId)
 		setProfile(updatedProfile)
@@ -288,7 +296,6 @@ function MainScreen() {
 				const inv = await getInventory(userId)
 				const achs = await getClaimedAchievements(userId)
 
-				// Загружаем общую статистику для достижений
 				const { data: allLogs } = await supabase
 					.from('water_logs')
 					.select('amount_ml')
@@ -594,32 +601,16 @@ function MainScreen() {
 			<div
 				style={{
 					display: 'flex',
-					flexDirection: 'column',
 					justifyContent: 'center',
 					alignItems: 'center',
 					height: '100vh',
 					background: isDark ? '#0f172a' : '#eef5fb',
 					color: isDark ? '#fff' : '#12355b',
-					padding: '20px',
-					textAlign: 'center'
+					fontSize: '18px',
+					fontWeight: 'bold'
 				}}
 			>
-				<div style={{ fontSize: '50px', marginBottom: '16px' }}>🔒</div>
-				<h2 style={{ marginBottom: '12px', fontSize: '22px' }}>
-					Доступ ограничен
-				</h2>
-				<p
-					style={{
-						fontSize: '15px',
-						color: '#71869d',
-						marginBottom: '24px',
-						maxWidth: '300px',
-						lineHeight: '1.5'
-					}}
-				>
-					Это приложение работает только внутри Telegram. Пожалуйста, перейдите
-					в нашего бота и откройте его оттуда.
-				</p>
+				Доступ ограничен
 			</div>
 		)
 	}
@@ -638,7 +629,6 @@ function MainScreen() {
 					className="skeleton skeleton-text"
 					style={{ width: '70%', height: '30px', marginBottom: '30px' }}
 				></div>
-				<div className="skeleton skeleton-card"></div>
 				<div className="skeleton skeleton-card"></div>
 			</main>
 		)
@@ -742,8 +732,7 @@ function MainScreen() {
 						handleKickMember={handleKickMember}
 						handleRenameFamily={handleRenameFamily}
 						familyLoading={familyLoading}
-						appliedFrame={appliedFrame}
-						appliedTitle={appliedTitle}
+						onMemberClick={m => setSelectedMember(m)} // ПЕРЕДАЕМ КЛИК
 					/>
 				)}
 				{tab === 'quests' && (
@@ -798,7 +787,6 @@ function MainScreen() {
 				showReward={showReward}
 				handleClaimReward={handleClaimReward}
 			/>
-
 			<SettingsModal
 				settings={settings}
 				setSettings={setSettings}
@@ -813,14 +801,12 @@ function MainScreen() {
 				appliedFrame={appliedFrame}
 				ownedItems={ownedItems}
 			/>
-
 			<InfoModal
 				activeInfo={activeInfo}
 				setActiveInfo={setActiveInfo}
 				goal={goal}
 				total={total}
 			/>
-
 			<ShopModal
 				show={showShop}
 				onClose={() => setShowShop(false)}
@@ -828,6 +814,12 @@ function MainScreen() {
 				onApplyItem={applyItem}
 				ownedItems={ownedItems}
 				onBuyItem={handleBuyItem}
+			/>
+
+			{/* ПОДКЛЮЧАЕМ ПРОФИЛЬ */}
+			<ProfileModal
+				user={selectedMember}
+				onClose={() => setSelectedMember(null)}
 			/>
 		</main>
 	)
