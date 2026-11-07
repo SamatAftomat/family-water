@@ -35,6 +35,42 @@
 			"desc": "Природа и зелень",
 			"cssClass": "theme-forest",
 			"themeMode": "light"
+		},
+		{
+			"id": "theme_neon",
+			"title": "Неон",
+			"icon": "👾",
+			"price": 250,
+			"desc": "Киберпанк стиль",
+			"cssClass": "theme-neon",
+			"themeMode": "dark"
+		},
+		{
+			"id": "theme_sunset",
+			"title": "Закат",
+			"icon": "🌅",
+			"price": 120,
+			"desc": "Теплые тона",
+			"cssClass": "theme-sunset",
+			"themeMode": "light"
+		},
+		{
+			"id": "theme_ice",
+			"title": "Лед",
+			"icon": "🧊",
+			"price": 180,
+			"desc": "Холодный минимализм",
+			"cssClass": "theme-ice",
+			"themeMode": "light"
+		},
+		{
+			"id": "theme_matrix",
+			"title": "Матрица",
+			"icon": "🟩",
+			"price": 300,
+			"desc": "Зеленый код",
+			"cssClass": "theme-matrix",
+			"themeMode": "dark"
 		}
 	],
 	"titles": [
@@ -69,6 +105,30 @@
 			"price": 150,
 			"desc": "Для настоящих королей",
 			"cssClass": "title-lord"
+		},
+		{
+			"id": "title_hydro",
+			"title": "Гидро-гений",
+			"icon": "🧠",
+			"price": 120,
+			"desc": "Знает всё о воде",
+			"cssClass": "title-hydro"
+		},
+		{
+			"id": "title_fire",
+			"title": "Огнеборец",
+			"icon": "🔥",
+			"price": 80,
+			"desc": "Тушит жажду",
+			"cssClass": "title-fire"
+		},
+		{
+			"id": "title_legend",
+			"title": "Легенда",
+			"icon": "🌟",
+			"price": 500,
+			"desc": "Максимальный статус",
+			"cssClass": "title-legend"
 		}
 	],
 	"frames": [
@@ -103,6 +163,30 @@
 			"price": 175,
 			"desc": "Для горячих сердец",
 			"cssClass": "frame-fire"
+		},
+		{
+			"id": "frame_diamond",
+			"title": "Алмазная",
+			"icon": "💎",
+			"price": 300,
+			"desc": "Кристальная чистота",
+			"cssClass": "frame-diamond"
+		},
+		{
+			"id": "frame_toxic",
+			"title": "Токсичная",
+			"icon": "☢️",
+			"price": 150,
+			"desc": "Радиоактивный стиль",
+			"cssClass": "frame-toxic"
+		},
+		{
+			"id": "frame_rainbow",
+			"title": "Радужная",
+			"icon": "🌈",
+			"price": 400,
+			"desc": "Цвета жизни",
+			"cssClass": "frame-rainbow"
 		}
 	],
 	"cases": [
@@ -116,7 +200,11 @@
 			"pool": [
 				"theme_space",
 				"theme_ocean",
-				"theme_forest"
+				"theme_forest",
+				"theme_neon",
+				"theme_sunset",
+				"theme_ice",
+				"theme_matrix"
 			]
 		},
 		{
@@ -129,7 +217,10 @@
 			"pool": [
 				"title_aqua",
 				"title_master",
-				"title_lord"
+				"title_lord",
+				"title_hydro",
+				"title_fire",
+				"title_legend"
 			]
 		},
 		{
@@ -142,7 +233,10 @@
 			"pool": [
 				"frame_gold",
 				"frame_neon",
-				"frame_fire"
+				"frame_fire",
+				"frame_diamond",
+				"frame_toxic",
+				"frame_rainbow"
 			]
 		},
 		{
@@ -150,12 +244,14 @@
 			"title": "Мега-Кейс",
 			"icon": "💎",
 			"price": 300,
-			"desc": "Всё самое лучшее!",
+			"desc": "100% шанс на крутую вещь!",
 			"color": "#fdcb6e",
 			"pool": [
-				"theme_space",
-				"title_lord",
-				"frame_gold"
+				"theme_matrix",
+				"theme_neon",
+				"title_legend",
+				"frame_rainbow",
+				"frame_diamond"
 			]
 		}
 	]

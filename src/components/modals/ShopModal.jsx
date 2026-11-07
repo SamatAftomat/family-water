@@ -24,7 +24,7 @@ export default function ShopModal({
 			return showToast('Недостаточно алмазов!', 'error')
 
 		setIsProcessing(true)
-		await onBuyItem(item)
+		const success = await onBuyItem(item)
 		setIsProcessing(false)
 	}
 
@@ -43,7 +43,6 @@ export default function ShopModal({
 				shopData.titles.find(t => t.id === randomId) ||
 				shopData.frames.find(f => f.id === randomId)
 
-			// Списываем ЦЕНУ КЕЙСА, а не предмета (skipDuplicateCheck = true)
 			const success = await onBuyItem(foundItem, c.price)
 
 			if (success) {
@@ -84,7 +83,8 @@ export default function ShopModal({
 						display: 'flex',
 						alignItems: 'center',
 						gap: '10px',
-						marginBottom: '20px'
+						marginBottom: '20px',
+						paddingRight: '30px'
 					}}
 				>
 					<div style={{ fontSize: '32px' }}>🛍️</div>
@@ -282,7 +282,7 @@ export default function ShopModal({
 								</div>
 								<button
 									onClick={() => openCase(c)}
-									disabled={spinning}
+									disabled={spinning || isProcessing}
 									style={{
 										background: c.color,
 										color: '#fff',
