@@ -69,7 +69,7 @@ export async function getLast7DaysTotal(userId) {
 }
 
 // ==========================================
-// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ЧЕРЕЗ API)
+// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ВОДА И ПРОФИЛЬ)
 // ==========================================
 
 async function callUserApi(action, payload = {}) {
@@ -230,7 +230,7 @@ export async function renameFamily(familyId, newName) {
 }
 
 // ==========================================
-// УВЕДОМЛЕНИЯ И ЗАДАНИЯ
+// УВЕДОМЛЕНИЯ
 // ==========================================
 
 export function showToast(message, type = 'info') {
@@ -238,6 +238,76 @@ export function showToast(message, type = 'info') {
 		new CustomEvent('app-toast', { detail: { message, type } })
 	)
 }
+
+// ==========================================
+// ИНВЕНТАРЬ И ПОКУПКИ
+// ==========================================
+
+export async function getInventory(userId) {
+	if (!supabase) return []
+	const { data } = await supabase
+		.from('inventory')
+		.select('item_id')
+		.eq('user_id', userId)
+	const defaultItems = ['theme_default', 'title_default', 'frame_default']
+	const owned = data ? data.map(i => i.item_id) : []
+	return [...new Set([...defaultItems, ...owned])]
+}
+
+export async function buyItemApi(
+	userId,
+	itemId,
+	price,
+	skipDuplicateCheck = false
+) {
+	if (!supabase) return { error: 'Нет связи с базой' }
+
+	// Если это прямой магазин — проверяем дубликат
+	if (!skipDuplicateCheck) {
+		const { data: existing } = await supabase
+			.from('inventory')
+			.select('id')
+			.eq('user_id', userId)
+			.eq('item_id', itemId)
+			.maybeSingle()
+		if (existing) return { error: 'Этот предмет уже куплен' }
+	}
+
+	// Проверяем баланс
+	const { data: profile } = await supabase
+		.from('users')
+		.select('diamonds')
+		.eq('id', userId)
+		.single()
+	if (!profile) return { error: 'Профиль не найден' }
+	if (profile.diamonds < price) return { error: 'Недостаточно алмазов!' }
+
+	// Списываем алмазы
+	if (price > 0) {
+		const { error: deductError } = await supabase
+			.from('users')
+			.update({ diamonds: profile.diamonds - price })
+			.eq('id', userId)
+		if (deductError) return { error: 'Ошибка списания' }
+	}
+
+	// Добавляем в инвентарь (если уже есть — просто игнорим дубль)
+	const { error: insertError } = await supabase.from('inventory').insert({
+		user_id: userId,
+		item_id: itemId
+	})
+
+	// Игнорируем ошибку дубликата при кейсе
+	if (insertError && !skipDuplicateCheck) {
+		return { error: 'Ошибка инвентаря' }
+	}
+
+	return { success: true, newBalance: profile.diamonds - price }
+}
+
+// ==========================================
+// ЗАДАНИЯ
+// ==========================================
 
 export async function getQuestProgress(userId, today, families) {
 	if (!supabase) return null
@@ -365,10 +435,8 @@ export async function getQuestProgress(userId, today, families) {
 		let activeMonthly = monthlyQuests.find(q => monthTotal < q.goal)
 		if (!activeMonthly) activeMonthly = monthlyQuests[monthlyQuests.length - 1]
 
-		const activeList = []
-
 		if (activeWeekly) {
-			activeList.push({
+			familyQuests.push({
 				...activeWeekly,
 				progress: Math.min(weekTotal, activeWeekly.goal),
 				done: weekTotal >= activeWeekly.goal
@@ -376,7 +444,7 @@ export async function getQuestProgress(userId, today, families) {
 		}
 
 		if (activeMonthly) {
-			activeList.push({
+			familyQuests.push({
 				...activeMonthly,
 				progress: Math.min(monthTotal, activeMonthly.goal),
 				done: monthTotal >= activeMonthly.goal
@@ -395,62 +463,13 @@ export async function getQuestProgress(userId, today, families) {
 						if (m.progress < 100) allDone = false
 					})
 			})
-			activeList.push({
+			familyQuests.push({
 				...syncQuest,
 				progress: allDone ? 1 : 0,
 				done: allDone
 			})
 		}
-
-		familyQuests = activeList
 	}
 
 	return { personal: personalQuest, family: familyQuests }
-}
-// ==========================================
-// ИНВЕНТАРЬ И ПОКУПКИ
-// ==========================================
-
-export async function getInventory(userId) {
-	if (!supabase) return []
-	const { data } = await supabase
-		.from('inventory')
-		.select('item_id')
-		.eq('user_id', userId)
-	// Добавляем базовые предметы, которые есть у всех по умолчанию
-	const defaultItems = ['theme_default', 'title_default', 'frame_default']
-	const owned = data ? data.map(i => i.item_id) : []
-	return [...new Set([...defaultItems, ...owned])]
-}
-
-export async function buyItemApi(userId, itemId, price) {
-	if (!supabase) return { error: 'Нет связи с базой' }
-
-	// Проверяем баланс
-	const { data: profile } = await supabase
-		.from('users')
-		.select('diamonds')
-		.eq('id', userId)
-		.single()
-	if (!profile) return { error: 'Профиль не найден' }
-	if (profile.diamonds < price) return { error: 'Недостаточно алмазов!' }
-
-	// Списываем алмазы
-	if (price > 0) {
-		const { error: deductError } = await supabase
-			.from('users')
-			.update({ diamonds: profile.diamonds - price })
-			.eq('id', userId)
-		if (deductError) return { error: 'Ошибка списания алмазов' }
-	}
-
-	// Добавляем в инвентарь
-	const { error: insertError } = await supabase.from('inventory').insert({
-		user_id: userId,
-		item_id: itemId
-	})
-
-	if (insertError) return { error: 'Ошибка добавления в инвентарь' }
-
-	return { success: true, newBalance: profile.diamonds - price }
 }

@@ -88,6 +88,21 @@ function MainScreen() {
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests']
 
+	// ОДНОРАЗОВАЯ ОЧИСТКА ИНВЕНТАРЯ (v2)
+	useEffect(() => {
+		const cleaned = localStorage.getItem('inventory_cleaned_v2')
+		if (!cleaned) {
+			localStorage.removeItem('applied_theme')
+			localStorage.removeItem('applied_title')
+			localStorage.removeItem('applied_frame')
+			localStorage.setItem('inventory_cleaned_v2', 'true')
+			setAppliedTheme('')
+			setAppliedTitle(null)
+			setAppliedFrame('')
+			setIsDark(false)
+		}
+	}, [])
+
 	const applyItem = item => {
 		if (item.id.startsWith('theme_')) {
 			setAppliedTheme(item.cssClass)
@@ -108,18 +123,26 @@ function MainScreen() {
 		}
 	}
 
-	const handleBuyItem = async (item, isCase = false) => {
-		const price = item.price || 0
-		const res = await buyItemApi(userId, item.id, price)
+	const handleBuyItem = async (item, priceOverride = null) => {
+		const price = priceOverride !== null ? priceOverride : item.price || 0
+		const skipDuplicates = priceOverride !== null
+
+		const res = await buyItemApi(userId, item.id, price, skipDuplicates)
 		if (res.error) {
 			showToast(res.error, 'error')
-			return
+			return false
 		}
+
 		showToast(`Куплено: ${item.title}`, 'success')
 		applyItem(item)
-		setOwnedItems(prev => [...prev, item.id])
+
+		if (!ownedItems.includes(item.id)) {
+			setOwnedItems(prev => [...prev, item.id])
+		}
+
 		const updatedProfile = await getUserProfile(userId)
 		setProfile(updatedProfile)
+		return true
 	}
 
 	useEffect(() => {
@@ -536,6 +559,18 @@ function MainScreen() {
 				<h2 style={{ marginBottom: '12px', fontSize: '22px' }}>
 					Доступ ограничен
 				</h2>
+				<p
+					style={{
+						fontSize: '15px',
+						color: '#71869d',
+						marginBottom: '24px',
+						maxWidth: '300px',
+						lineHeight: '1.5'
+					}}
+				>
+					Это приложение работает только внутри Telegram. Пожалуйста, перейдите
+					в нашего бота и откройте его оттуда.
+				</p>
 			</div>
 		)
 	}
@@ -554,6 +589,7 @@ function MainScreen() {
 					className="skeleton skeleton-text"
 					style={{ width: '70%', height: '30px', marginBottom: '30px' }}
 				></div>
+				<div className="skeleton skeleton-card"></div>
 				<div className="skeleton skeleton-card"></div>
 			</main>
 		)

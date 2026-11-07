@@ -14,11 +14,18 @@ export default function ShopModal({
 	const [spinning, setSpinning] = useState(false)
 	const [wonPrize, setWonPrize] = useState(null)
 	const [openedCase, setOpenedCase] = useState(null)
+	const [isProcessing, setIsProcessing] = useState(false)
 
 	if (!show) return null
 
-	const handleBuy = item => {
-		onBuyItem(item)
+	const handleBuy = async item => {
+		if (isProcessing) return
+		if (diamonds < item.price)
+			return showToast('Недостаточно алмазов!', 'error')
+
+		setIsProcessing(true)
+		await onBuyItem(item)
+		setIsProcessing(false)
 	}
 
 	const openCase = c => {
@@ -29,20 +36,23 @@ export default function ShopModal({
 		setWonPrize(null)
 		setOpenedCase(c)
 
-		setTimeout(() => {
+		setTimeout(async () => {
 			const randomId = c.pool[Math.floor(Math.random() * c.pool.length)]
 			let foundItem =
 				shopData.themes.find(t => t.id === randomId) ||
 				shopData.titles.find(t => t.id === randomId) ||
 				shopData.frames.find(f => f.id === randomId)
 
-			setWonPrize(foundItem)
-			onBuyItem(foundItem, true) // СРАЗУ ПОКУПАЕМ И ПРИМЕНЯЕМ
+			// Списываем ЦЕНУ КЕЙСА, а не предмета (skipDuplicateCheck = true)
+			const success = await onBuyItem(foundItem, c.price)
+
+			if (success) {
+				setWonPrize(foundItem)
+			}
 			setSpinning(false)
 		}, 2000)
 	}
 
-	// Фильтруем предметы: если уже куплено — не показываем (кроме дефолтных)
 	const availableThemes = shopData.themes.filter(
 		t => !ownedItems.includes(t.id)
 	)
@@ -137,6 +147,7 @@ export default function ShopModal({
 									<button
 										className="shop-buy-btn"
 										onClick={() => handleBuy(item)}
+										disabled={isProcessing}
 									>
 										{item.price > 0 ? `${item.price} ✦` : 'Купить'}
 									</button>
@@ -176,6 +187,7 @@ export default function ShopModal({
 											<button
 												className="shop-buy-btn"
 												onClick={() => handleBuy(item)}
+												disabled={isProcessing}
 											>
 												{item.price > 0 ? `${item.price} ✦` : 'Купить'}
 											</button>
@@ -210,6 +222,7 @@ export default function ShopModal({
 											<button
 												className="shop-buy-btn"
 												onClick={() => handleBuy(item)}
+												disabled={isProcessing}
 											>
 												{item.price > 0 ? `${item.price} ✦` : 'Купить'}
 											</button>
@@ -269,6 +282,7 @@ export default function ShopModal({
 								</div>
 								<button
 									onClick={() => openCase(c)}
+									disabled={spinning}
 									style={{
 										background: c.color,
 										color: '#fff',

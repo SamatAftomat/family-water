@@ -13,7 +13,7 @@
 			"id": "theme_space",
 			"title": "Космос",
 			"icon": "🌌",
-			"price": 30,
+			"price": 200,
 			"desc": "Темный фон со звездами",
 			"cssClass": "theme-space",
 			"themeMode": "dark"
@@ -22,7 +22,7 @@
 			"id": "theme_ocean",
 			"title": "Океан",
 			"icon": "🌊",
-			"price": 20,
+			"price": 150,
 			"desc": "Морской бриз",
 			"cssClass": "theme-ocean",
 			"themeMode": "light"
@@ -31,7 +31,7 @@
 			"id": "theme_forest",
 			"title": "Лес",
 			"icon": "🌲",
-			"price": 10,
+			"price": 100,
 			"desc": "Природа и зелень",
 			"cssClass": "theme-forest",
 			"themeMode": "light"
@@ -50,7 +50,7 @@
 			"id": "title_aqua",
 			"title": "Аквамен",
 			"icon": "🔱",
-			"price": 120,
+			"price": 50,
 			"desc": "Повелитель воды",
 			"cssClass": "title-aqua"
 		},
@@ -58,7 +58,7 @@
 			"id": "title_master",
 			"title": "Водный магнат",
 			"icon": "💰",
-			"price": 210,
+			"price": 100,
 			"desc": "Тот, кто не жалеет воды",
 			"cssClass": "title-master"
 		},
@@ -66,7 +66,7 @@
 			"id": "title_lord",
 			"title": "Лорд гидратации",
 			"icon": "👑",
-			"price": 110,
+			"price": 150,
 			"desc": "Для настоящих королей",
 			"cssClass": "title-lord"
 		}
@@ -76,7 +76,7 @@
 			"id": "frame_default",
 			"title": "Без рамки",
 			"icon": "⭕",
-			"price": 1,
+			"price": 0,
 			"desc": "Обычная аватарка",
 			"cssClass": ""
 		},
@@ -84,7 +84,7 @@
 			"id": "frame_gold",
 			"title": "Золотая",
 			"icon": "🥇",
-			"price": 10,
+			"price": 75,
 			"desc": "Блеск и роскошь",
 			"cssClass": "frame-gold"
 		},
@@ -92,7 +92,7 @@
 			"id": "frame_neon",
 			"title": "Неоновая",
 			"icon": "💜",
-			"price": 20,
+			"price": 125,
 			"desc": "Светится в темноте",
 			"cssClass": "frame-neon"
 		},
@@ -100,7 +100,7 @@
 			"id": "frame_fire",
 			"title": "Огненная",
 			"icon": "🔥",
-			"price": 20,
+			"price": 175,
 			"desc": "Для горячих сердец",
 			"cssClass": "frame-fire"
 		}
@@ -110,7 +110,7 @@
 			"id": "case_theme",
 			"title": "Кейс «Темы»",
 			"icon": "📦",
-			"price": 10,
+			"price": 100,
 			"desc": "Случайный фон",
 			"color": "#74b9ff",
 			"pool": [
@@ -123,7 +123,7 @@
 			"id": "case_title",
 			"title": "Кейс «Титулы»",
 			"icon": "🏷️",
-			"price": 10,
+			"price": 75,
 			"desc": "Случайный титул",
 			"color": "#a29bfe",
 			"pool": [
@@ -136,7 +136,7 @@
 			"id": "case_frame",
 			"title": "Кейс «Рамки»",
 			"icon": "🖼️",
-			"price": 10,
+			"price": 80,
 			"desc": "Случайная рамка",
 			"color": "#55efc4",
 			"pool": [
@@ -149,7 +149,7 @@
 			"id": "case_mega",
 			"title": "Мега-Кейс",
 			"icon": "💎",
-			"price": 10,
+			"price": 300,
 			"desc": "Всё самое лучшее!",
 			"color": "#fdcb6e",
 			"pool": [
