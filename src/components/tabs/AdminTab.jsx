@@ -7,7 +7,9 @@ import {
 	adminGiveItem,
 	adminSendMessage,
 	adminGetPrices,
-	adminUpdatePrices
+	adminUpdatePrices,
+	adminRemoveItem,
+	adminClearInventory
 } from '../../lib/api'
 import shopData from '../../data/shop.json'
 import { showToast } from '../../lib/api'
@@ -22,6 +24,11 @@ export default function AdminTab() {
 	const [loading, setLoading] = useState(true)
 	const [activeTab, setActiveTab] = useState('users')
 	const [prices, setPrices] = useState({})
+
+	// Для дополнительных настроек
+	const [selectedUser, setSelectedUser] = useState(null)
+	const [customDiamonds, setCustomDiamonds] = useState('')
+	const [itemToRemove, setItemToRemove] = useState('')
 
 	const loadData = async () => {
 		setLoading(true)
@@ -85,6 +92,30 @@ export default function AdminTab() {
 	const savePrices = async () => {
 		await adminUpdatePrices(prices)
 		showToast('Цены сохранены', 'success')
+	}
+
+	// Обработчики из модалки доп. настроек
+	const handleCustomDiamonds = async isAdd => {
+		const val = Number(customDiamonds)
+		if (!val) return
+		await handleDiamonds(selectedUser.id, isAdd ? val : -val)
+		setCustomDiamonds('')
+		setSelectedUser(null) // Закрываем, так как данные обновились
+	}
+
+	const handleRemoveItem = async () => {
+		if (!itemToRemove) return
+		await adminRemoveItem(selectedUser.id, itemToRemove)
+		showToast('Предмет забран', 'info')
+		setItemToRemove('')
+		setSelectedUser(null)
+	}
+
+	const handleClearInventory = async () => {
+		if (!window.confirm('Полностью очистить инвентарь пользователя?')) return
+		await adminClearInventory(selectedUser.id)
+		showToast('Инвентарь очищен', 'info')
+		setSelectedUser(null)
 	}
 
 	if (loading) return <p className="empty-note">Загрузка данных...</p>
@@ -178,26 +209,33 @@ export default function AdminTab() {
 									</div>
 								</div>
 
-								<div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+								{/* 6 ОСНОВНЫХ КНОПОК */}
+								<div
+									style={{
+										display: 'grid',
+										gridTemplateColumns: '1fr 1fr',
+										gap: '6px'
+									}}
+								>
 									<button
-										onClick={() => handleDiamonds(u.id, 100)}
+										onClick={() => handleDiamonds(u.id, 10)}
 										className="shop-buy-btn"
-										style={{ flex: 1, padding: '8px' }}
+										style={{ padding: '8px' }}
 									>
-										+100 ✦
+										+10 ✦
 									</button>
 									<button
-										onClick={() => handleDiamonds(u.id, -100)}
+										onClick={() => handleDiamonds(u.id, -10)}
 										className="shop-buy-btn"
-										style={{ flex: 1, padding: '8px' }}
+										style={{ padding: '8px' }}
 									>
-										-100 ✦
+										-10 ✦
 									</button>
+
 									<button
 										onClick={() => handleResetStreak(u.id)}
 										className="shop-buy-btn"
 										style={{
-											flex: 1,
 											padding: '8px',
 											background: '#ff7675',
 											color: '#fff'
@@ -205,20 +243,10 @@ export default function AdminTab() {
 									>
 										Сброс стрика
 									</button>
-								</div>
-								<div
-									style={{
-										display: 'flex',
-										flexWrap: 'wrap',
-										gap: '6px',
-										marginTop: '6px'
-									}}
-								>
 									<button
 										onClick={() => handleGiveItem(u.id)}
 										className="shop-buy-btn"
 										style={{
-											flex: 1,
 											padding: '8px',
 											background: '#a29bfe',
 											color: '#fff'
@@ -226,11 +254,11 @@ export default function AdminTab() {
 									>
 										Выдать предмет
 									</button>
+
 									<button
 										onClick={() => handleSendMessage(u.id)}
 										className="shop-buy-btn"
 										style={{
-											flex: 1,
 											padding: '8px',
 											background: '#55efc4',
 											color: '#173f70'
@@ -242,7 +270,6 @@ export default function AdminTab() {
 										onClick={() => handleToggleBan(u.id, u.is_banned)}
 										className="shop-buy-btn"
 										style={{
-											flex: 1,
 											padding: '8px',
 											background: u.is_banned ? '#0ba360' : '#c17575',
 											color: '#fff'
@@ -251,6 +278,22 @@ export default function AdminTab() {
 										{u.is_banned ? 'Разбанить' : 'Забанить'}
 									</button>
 								</div>
+
+								{/* КНОПКА ДОП НАСТРОЕК */}
+								<button
+									onClick={() => setSelectedUser(u)}
+									className="shop-buy-btn"
+									style={{
+										width: '100%',
+										marginTop: '8px',
+										padding: '10px',
+										background: '#eef5fb',
+										color: '#173f70',
+										border: '1px solid #d4e1eb'
+									}}
+								>
+									⚙️ Больше настроек
+								</button>
 							</div>
 						))}
 					</div>
@@ -304,6 +347,107 @@ export default function AdminTab() {
 					>
 						Сохранить цены
 					</button>
+				</div>
+			)}
+
+			{/* МОДАЛКА ДОПОЛНИТЕЛЬНЫХ НАСТРОЕК */}
+			{selectedUser && (
+				<div
+					className="modal-backdrop"
+					onClick={() => setSelectedUser(null)}
+				>
+					<div
+						className="settings-modal"
+						onClick={e => e.stopPropagation()}
+						style={{ maxHeight: '80vh', overflowY: 'auto' }}
+					>
+						<button
+							className="modal-close"
+							onClick={() => setSelectedUser(null)}
+						>
+							×
+						</button>
+						<p className="eyebrow">УПРАВЛЕНИЕ</p>
+						<h2 style={{ marginBottom: '8px' }}>{selectedUser.first_name}</h2>
+						<p
+							style={{
+								fontSize: '14px',
+								color: '#71869d',
+								marginBottom: '20px'
+							}}
+						>
+							Баланс: <strong>{selectedUser.diamonds} ✦</strong>
+						</p>
+
+						<label
+							style={{ display: 'grid', gap: '6px', marginBottom: '16px' }}
+						>
+							<span>Точное количество алмазов</span>
+							<div style={{ display: 'flex', gap: '8px' }}>
+								<input
+									type="number"
+									value={customDiamonds}
+									onChange={e => setCustomDiamonds(e.target.value)}
+									placeholder="Например: 50"
+									style={{
+										flex: 1,
+										padding: '12px',
+										borderRadius: '10px',
+										border: '1px solid #d4e1eb'
+									}}
+								/>
+								<button
+									onClick={() => handleCustomDiamonds(true)}
+									className="shop-buy-btn"
+									style={{ background: '#0ba360', color: '#fff' }}
+								>
+									Добавить
+								</button>
+								<button
+									onClick={() => handleCustomDiamonds(false)}
+									className="shop-buy-btn"
+									style={{ background: '#c17575', color: '#fff' }}
+								>
+									Забрать
+								</button>
+							</div>
+						</label>
+
+						<label
+							style={{ display: 'grid', gap: '6px', marginBottom: '16px' }}
+						>
+							<span>Забрать предмет (по ID)</span>
+							<div style={{ display: 'flex', gap: '8px' }}>
+								<input
+									type="text"
+									value={itemToRemove}
+									onChange={e => setItemToRemove(e.target.value)}
+									placeholder="theme_space"
+									style={{
+										flex: 1,
+										padding: '12px',
+										borderRadius: '10px',
+										border: '1px solid #d4e1eb'
+									}}
+								/>
+								<button
+									onClick={handleRemoveItem}
+									className="shop-buy-btn"
+									style={{ background: '#ff7675', color: '#fff' }}
+								>
+									Убрать
+								</button>
+							</div>
+						</label>
+
+						<button
+							onClick={handleClearInventory}
+							className="primary-action"
+							style={{ background: '#c17575', marginTop: '10px' }}
+						>
+							🗑️ Полностью очистить инвентарь
+						</button>
+					</div>
 				</div>
 			)}
 		</section>

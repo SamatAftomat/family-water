@@ -15,7 +15,6 @@ export default async function handler(req, res) {
 		return res.status(500).json({ error: 'Ошибка конфигурации' })
 	}
 
-	// 1. ПРОВЕРКА ПОДПИСИ
 	const params = new URLSearchParams(initData)
 	const hash = params.get('hash')
 	params.delete('hash')
@@ -37,7 +36,6 @@ export default async function handler(req, res) {
 
 	const user = JSON.parse(params.get('user'))
 
-	// 2. ПРОВЕРКА НА АДМИНА
 	if (Number(user.id) !== ADMIN_ID) {
 		return res
 			.status(403)
@@ -47,7 +45,6 @@ export default async function handler(req, res) {
 	const supabase = createClient(supabaseUrl, supabaseKey)
 
 	try {
-		// ПОЛУЧИТЬ ВСЕХ ЮЗЕРОВ И СТАТИСТИКУ
 		if (action === 'get_users') {
 			const { data: users } = await supabase
 				.from('users')
@@ -56,24 +53,23 @@ export default async function handler(req, res) {
 			const { count: familyCount } = await supabase
 				.from('families')
 				.select('*', { count: 'exact', head: true })
-
-			// Считаем общий литраж
 			const { data: logs } = await supabase
 				.from('water_logs')
 				.select('amount_ml')
 			const totalWater = (logs || []).reduce((sum, l) => sum + l.amount_ml, 0)
 
-			return res.status(200).json({
-				users: users || [],
-				stats: {
-					totalUsers: users?.length || 0,
-					totalWater,
-					totalFamilies: familyCount || 0
-				}
-			})
+			return res
+				.status(200)
+				.json({
+					users: users || [],
+					stats: {
+						totalUsers: users?.length || 0,
+						totalWater,
+						totalFamilies: familyCount || 0
+					}
+				})
 		}
 
-		// УПРАВЛЕНИЕ АЛМАЗАМИ
 		if (action === 'update_diamonds') {
 			const { targetId, amount } = payload
 			const { data: prof } = await supabase
@@ -89,7 +85,6 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// СБРОС СТРИКА
 		if (action === 'reset_streak') {
 			await supabase
 				.from('users')
@@ -98,7 +93,6 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// БАН / РАЗБАН
 		if (action === 'toggle_ban') {
 			await supabase
 				.from('users')
@@ -107,7 +101,6 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// ВЫДАТЬ ПРЕДМЕТ
 		if (action === 'give_item') {
 			await supabase
 				.from('inventory')
@@ -115,7 +108,27 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// НАПИСАТЬ СООБЩЕНИЕ В БОТА
+		// ЗАБРАТЬ ПРЕДМЕТ
+		if (action === 'remove_item') {
+			const { error } = await supabase
+				.from('inventory')
+				.delete()
+				.eq('user_id', payload.targetId)
+				.eq('item_id', payload.itemId)
+			if (error) throw error
+			return res.status(200).json({ ok: true })
+		}
+
+		// ОЧИСТИТЬ ИНВЕНТАРЬ
+		if (action === 'clear_inventory') {
+			const { error } = await supabase
+				.from('inventory')
+				.delete()
+				.eq('user_id', payload.targetId)
+			if (error) throw error
+			return res.status(200).json({ ok: true })
+		}
+
 		if (action === 'send_message') {
 			await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
 				method: 'POST',
@@ -128,7 +141,6 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// ОБНОВИТЬ ЦЕНЫ В МАГАЗИНЕ
 		if (action === 'update_prices') {
 			await supabase
 				.from('settings')
@@ -136,7 +148,6 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// ПОЛУЧИТЬ ЦЕНЫ
 		if (action === 'get_prices') {
 			const { data } = await supabase
 				.from('settings')
