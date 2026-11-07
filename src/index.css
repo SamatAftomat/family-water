@@ -1083,16 +1083,142 @@ body {
 	transition: width 0.3s ease;
 }
 .quest-reward {
-  background: #eef5fb;
-  color: #1886ad;
-  padding: 4px 10px;
-  border-radius: 8px;
-  font-weight: 800;
-  font-size: 14px;
-  flex-shrink: 0;
-  /* ВОТ ЭТИ ТРИ СТРОЧКИ ЦЕНТРИРУЮТ ТЕКСТ ВНУТРИ БЛОКА */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 50px;
+	background: #eef5fb;
+	color: #1886ad;
+	padding: 4px 10px;
+	border-radius: 8px;
+	font-weight: 800;
+	font-size: 14px;
+	flex-shrink: 0;
+	/* ВОТ ЭТИ ТРИ СТРОЧКИ ЦЕНТРИРУЮТ ТЕКСТ ВНУТРИ БЛОКА */
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 50px;
+} /* ==========================================
+   МАГАЗИН И КЕЙСЫ
+   ========================================== */
+.shop-modal {
+	position: relative;
+	width: min(100%, 620px);
+	margin: auto;
+	padding: 24px;
+	border-radius: 24px;
+	background: #fff;
+	box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+	animation: slideUp 0.3s ease-out;
+	max-height: 85vh;
+	overflow-y: auto;
+}
+.dark-theme .shop-modal {
+	background: #1e293b;
+}
+.dark-theme .shop-modal h2 {
+	color: #f8fafc;
+}
+.dark-theme .shop-item {
+	background: #0f172a;
+	border-color: #334155;
+}
+.dark-theme .shop-title {
+	color: #f8fafc;
+}
+.dark-theme .shop-icon {
+	background: #1e293b;
+}
+
+.shop-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 12px;
+}
+
+.shop-item {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	background: #f8fafc;
+	padding: 12px;
+	border-radius: 16px;
+	border: 1px solid #e2e8f0;
+}
+
+.shop-icon {
+	font-size: 28px;
+	background: #fff;
+	width: 50px;
+	height: 50px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 12px;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+	flex-shrink: 0;
+}
+
+.shop-info {
+	flex: 1;
+}
+
+.shop-title {
+	font-weight: 700;
+	color: #173f70;
+	font-size: 15px;
+	margin-bottom: 2px;
+}
+
+.shop-desc {
+	font-size: 12px;
+	color: #71869d;
+}
+
+.shop-buy-btn {
+	background: #fff0bf;
+	color: #c49b00;
+	border: none;
+	padding: 8px 12px;
+	border-radius: 10px;
+	font-weight: 800;
+	font-size: 14px;
+	cursor: pointer;
+	transition: transform 0.1s;
+	flex-shrink: 0;
+}
+.shop-buy-btn:active {
+	transform: scale(0.95);
+}
+
+/* Анимация рулетки */
+.case-spinner {
+	width: 80px;
+	height: 80px;
+	border: 6px solid #e2e8f0;
+	border-top: 6px solid #173f70;
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+.case-spinner-inner {
+	font-size: 30px;
+	animation: pulse 1s ease-in-out infinite;
+}
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+@keyframes popIn {
+	0% {
+		transform: scale(0.5);
+		opacity: 0;
+	}
+	100% {
+		transform: scale(1);
+		opacity: 1;
+	}
 }

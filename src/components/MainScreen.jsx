@@ -31,6 +31,7 @@ import QuestsTab from './tabs/QuestsTab'
 import RewardModal from './modals/RewardModal'
 import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
+import ShopModal from './modals/ShopModal' // ИМПОРТ МАГАЗИНА
 
 const todayKey = () => {
 	const d = new Date()
@@ -53,6 +54,7 @@ function MainScreen() {
 	const [showCustom, setShowCustom] = useState(false)
 	const [settings, setSettings] = useState(false)
 	const [activeInfo, setActiveInfo] = useState(null)
+	const [showShop, setShowShop] = useState(false) // Стейт магазина
 	const [isDark, setIsDark] = useState(
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
@@ -569,10 +571,11 @@ function MainScreen() {
 			</header>
 
 			<section className="compact-stats">
+				{/* ТЕПЕРЬ КЛИК ПО АЛМАЗАМ ОТКРЫВАЕТ МАГАЗИН */}
 				<div
 					ref={diamondTargetRef}
 					className={diamondPop ? 'pop-anim' : ''}
-					onClick={() => setActiveInfo('diamonds')}
+					onClick={() => setShowShop(true)}
 				>
 					<span>✦</span>
 					<strong>{profile?.diamonds || 0}</strong>
@@ -699,6 +702,13 @@ function MainScreen() {
 				setActiveInfo={setActiveInfo}
 				goal={goal}
 				total={total}
+			/>
+
+			{/* ПОДКЛЮЧАЕМ МАГАЗИН */}
+			<ShopModal
+				show={showShop}
+				onClose={() => setShowShop(false)}
+				diamonds={profile?.diamonds || 0}
 			/>
 		</main>
 	)
