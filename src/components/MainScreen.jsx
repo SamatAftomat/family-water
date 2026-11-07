@@ -46,16 +46,47 @@ const todayKey = () => {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// ХЕЛПЕРЫ ДЛЯ КЭША
+const getCache = (key, fallback) => {
+	try {
+		const data = localStorage.getItem(`cache_${key}`)
+		return data ? JSON.parse(data) : fallback
+	} catch {
+		return fallback
+	}
+}
+const setCache = (key, data) => {
+	try {
+		localStorage.setItem(`cache_${key}`, JSON.stringify(data))
+	} catch {}
+}
+
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
 	const isTelegram = !!window.Telegram?.WebApp?.initData
 	const isAdmin = userId === 6556768668
 
-	const [profile, setProfile] = useState(null)
-	const [logs, setLogs] = useState([])
-	const [chartTotals, setChartTotals] = useState({})
+	// ИНИЦИАЛИЗИРУЕМ СТЕЙТЫ ИЗ КЭША (МГНОВЕННАЯ ЗАГРУЗКА)
+	const [profile, setProfile] = useState(() => getCache('profile', null))
+	const [logs, setLogs] = useState(() => getCache('logs', []))
+	const [chartTotals, setChartTotals] = useState(() => getCache('chart', {}))
+	const [ownedItems, setOwnedItems] = useState(() => getCache('inv', []))
+	const [claimedAchs, setClaimedAchs] = useState(() => getCache('achs', []))
+	const [families, setFamilies] = useState(() => getCache('families', []))
+	const [invites, setInvites] = useState(() => getCache('invites', []))
 	const [quests, setQuests] = useState(null)
-	const [isLoading, setIsLoading] = useState(true)
+	const [userStats, setUserStats] = useState(() =>
+		getCache('stats', {
+			totalWater: 0,
+			streak: 0,
+			familyCount: 0,
+			maxFamilyMembers: 0,
+			titlesBought: 0
+		})
+	)
+
+	// ЕСЛИ ПРОФИЛЬ ЕСТЬ В КЭШЕ — НЕ ПОКАЗЫВАЕМ ЗАГРУЗКУ
+	const [isLoading, setIsLoading] = useState(!profile)
 	const [isAdding, setIsAdding] = useState(false)
 
 	const [tab, setTab] = useState('today')
@@ -71,7 +102,6 @@ function MainScreen() {
 	const [selectedMember, setSelectedMember] = useState(null)
 	const [customPrices, setCustomPrices] = useState({})
 
-	const [ownedItems, setOwnedItems] = useState([])
 	const [appliedTheme, setAppliedTheme] = useState(
 		() => localStorage.getItem('applied_theme') || ''
 	)
@@ -83,23 +113,11 @@ function MainScreen() {
 		() => localStorage.getItem('applied_frame') || ''
 	)
 
-	const [claimedAchs, setClaimedAchs] = useState([])
-	const [userStats, setUserStats] = useState({
-		totalWater: 0,
-		streak: 0,
-		familyCount: 0,
-		maxFamilyMembers: 0,
-		titlesBought: 0
-	})
-
 	const [showReward, setShowReward] = useState(false)
 	const [diamondPop, setDiamondPop] = useState(false)
 	const diamondTargetRef = useRef(null)
 
-	const [families, setFamilies] = useState([])
-	const [invites, setInvites] = useState([])
 	const [familyLoading, setFamilyLoading] = useState(false)
-
 	const [toasts, setToasts] = useState([])
 
 	const touchStart = useRef({ x: 0, y: 0 })
@@ -162,10 +180,15 @@ function MainScreen() {
 		showToast(`Куплено: ${item.title}`, 'success')
 		applyItem(item)
 
-		if (!ownedItems.includes(item.id)) setOwnedItems(prev => [...prev, item.id])
+		if (!ownedItems.includes(item.id)) {
+			const newInv = [...ownedItems, item.id]
+			setOwnedItems(newInv)
+			setCache('inv', newInv)
+		}
 
 		const updatedProfile = await getUserProfile(userId)
 		setProfile(updatedProfile)
+		setCache('profile', updatedProfile)
 		return true
 	}
 
@@ -175,11 +198,14 @@ function MainScreen() {
 			showToast(res.error, 'error')
 		} else {
 			showToast(`Награда получена! +${ach.reward} ✦`, 'success')
-			setClaimedAchs(prev => [...prev, ach.id])
-			setProfile(prev => ({
-				...prev,
-				diamonds: (prev.diamonds || 0) + ach.reward
-			}))
+			const newAchs = [...claimedAchs, ach.id]
+			setClaimedAchs(newAchs)
+			setCache('achs', newAchs)
+			setProfile(prev => {
+				const p = { ...prev, diamonds: (prev.diamonds || 0) + ach.reward }
+				setCache('profile', p)
+				return p
+			})
 		}
 	}
 
@@ -284,22 +310,33 @@ function MainScreen() {
 	}, [profile, today])
 
 	const loadFamilies = async () => {
-		const fams = await getMyFamilies(userId, today)
-		const invs = await getMyInvites(userId)
+		const [fams, invs] = await Promise.all([
+			getMyFamilies(userId, today),
+			getMyInvites(userId)
+		])
 		setFamilies(fams)
 		setInvites(invs)
+		setCache('families', fams)
+		setCache('invites', invs)
+
 		const q = await getQuestProgress(userId, today, fams)
 		setQuests(q)
 	}
 
+	// ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА (Promise.all) БЕЗ ВОДОПАДА
 	useEffect(() => {
 		async function loadData() {
 			try {
-				const dbProfile = await getUserProfile(userId)
-				const dbLogs = await getTodayLogs(userId, today)
-				const totals7Days = await getLast7DaysTotal(userId)
-				const inv = await getInventory(userId)
-				const achs = await getClaimedAchievements(userId)
+				const [dbProfile, dbLogs, totals7Days, inv, achs, fams, invs] =
+					await Promise.all([
+						getUserProfile(userId),
+						getTodayLogs(userId, today),
+						getLast7DaysTotal(userId),
+						getInventory(userId),
+						getClaimedAchievements(userId),
+						getMyFamilies(userId, today),
+						getMyInvites(userId)
+					])
 
 				const { data: allLogs } = await supabase
 					.from('water_logs')
@@ -310,9 +347,6 @@ function MainScreen() {
 					0
 				)
 
-				const fams = await getMyFamilies(userId, today)
-
-				// СЧИТАЕМ ТОЛЬКО ТЕ ГРУППЫ, ГДЕ ТЫ ВЛАДЕЛЕЦ (СОЗДАТЕЛЬ)
 				const ownedFamiliesCount = fams.filter(
 					f => f.owner_id === userId
 				).length
@@ -320,36 +354,47 @@ function MainScreen() {
 					fams.length > 0 ? Math.max(...fams.map(f => f.members.length)) : 0
 				const titlesCount = inv.filter(i => i.startsWith('title_')).length
 
-				if (dbProfile) setProfile(dbProfile)
-				else
-					setProfile(
-						JSON.parse(localStorage.getItem('family-water-profile')) || {
-							first_name: 'Пользователь',
-							weight_kg: 70,
-							water_goal_ml: 2100
-						}
-					)
+				const finalProfile = dbProfile ||
+					JSON.parse(localStorage.getItem('family-water-profile')) || {
+						first_name: 'Пользователь',
+						weight_kg: 70,
+						water_goal_ml: 2100
+					}
+				const finalStats = {
+					totalWater,
+					streak: finalProfile?.streak_days || 0,
+					familyCount: ownedFamiliesCount,
+					maxFamilyMembers: maxMembers,
+					titlesBought: titlesCount
+				}
 
+				// Обновляем стейты
+				setProfile(finalProfile)
 				setLogs(dbLogs)
 				setChartTotals(totals7Days)
 				setOwnedItems(inv)
 				setClaimedAchs(achs)
+				setFamilies(fams)
+				setInvites(invs)
+				setUserStats(finalStats)
 
-				// ПЕРЕДАЕМ ownedFamiliesCount ВМЕСТО ОБЩЕГО КОЛИЧЕСТВА
-				setUserStats({
-					totalWater,
-					streak: dbProfile?.streak_days || 0,
-					familyCount: ownedFamiliesCount,
-					maxFamilyMembers: maxMembers,
-					titlesBought: titlesCount
-				})
+				// Сохраняем в кэш для мгновенного запуска в следующий раз
+				setCache('profile', finalProfile)
+				setCache('logs', dbLogs)
+				setCache('chart', totals7Days)
+				setCache('inv', inv)
+				setCache('achs', achs)
+				setCache('families', fams)
+				setCache('invites', invs)
+				setCache('stats', finalStats)
 
 				if (isAdmin) {
 					const pricesRes = await adminGetPrices()
 					if (pricesRes.prices) setCustomPrices(pricesRes.prices)
 				}
 
-				await loadFamilies()
+				const q = await getQuestProgress(userId, today, fams)
+				setQuests(q)
 			} catch (err) {
 				console.error('Ошибка загрузки:', err)
 			} finally {
@@ -409,7 +454,10 @@ function MainScreen() {
 			date: today
 		}
 
-		setLogs([newLog, ...logs])
+		// Оптимистичный UI (мгновенно)
+		const newLogs = [newLog, ...logs]
+		setLogs(newLogs)
+		setCache('logs', newLogs)
 		setCustomAmount('')
 		setShowCustom(false)
 		setIsAdding(true)
@@ -438,10 +486,14 @@ function MainScreen() {
 			setProfile(updatedProfile)
 			setLogs(updatedLogs)
 			setChartTotals(totals7Days)
+			setCache('profile', updatedProfile)
+			setCache('logs', updatedLogs)
+			setCache('chart', totals7Days)
 			localStorage.setItem(
 				'family-water-profile',
 				JSON.stringify(updatedProfile)
 			)
+
 			showToast(`+${value} мл добавлено! 💧`, 'success')
 
 			const q = await getQuestProgress(userId, today, families)
@@ -449,6 +501,8 @@ function MainScreen() {
 		} catch (err) {
 			setLogs(previousLogs)
 			setProfile(previousProfile)
+			setCache('logs', previousLogs)
+			setCache('profile', previousProfile)
 			showToast(err.message, 'error')
 		} finally {
 			setIsAdding(false)
@@ -481,7 +535,9 @@ function MainScreen() {
 	async function removeLog(id) {
 		if (!window.confirm('Удалить эту запись?')) return
 		await deleteLogFromDb(id)
-		setLogs(current => current.filter(log => log.id !== id))
+		const newLogs = logs.filter(log => log.id !== id)
+		setLogs(newLogs)
+		setCache('logs', newLogs)
 		setChartTotals(await getLast7DaysTotal(userId))
 		showToast('Запись удалена', 'info')
 	}
@@ -492,6 +548,7 @@ function MainScreen() {
 		const startOfDayISO = new Date(`${today}T00:00:00+03:00`).toISOString()
 		await clearTodayLogs(startOfDayISO)
 		setLogs([])
+		setCache('logs', [])
 		setChartTotals(await getLast7DaysTotal(userId))
 		showToast('Все записи за сегодня удалены', 'info')
 	}
@@ -511,6 +568,7 @@ function MainScreen() {
 			water_goal_ml: weight * 30
 		}
 		setProfile(updated)
+		setCache('profile', updated)
 		localStorage.setItem('family-water-profile', JSON.stringify(updated))
 		setSettings(false)
 
@@ -633,7 +691,8 @@ function MainScreen() {
 		)
 	}
 
-	if (isLoading) {
+	// ПОКАЗЫВАЕМ СКЕЛЕТОН ТОЛЬКО ЕСЛИ НЕТ КЭША
+	if (isLoading && !profile) {
 		return (
 			<main
 				className={`water-app ${isDark ? 'dark-theme' : ''}`}
@@ -647,6 +706,7 @@ function MainScreen() {
 					className="skeleton skeleton-text"
 					style={{ width: '70%', height: '30px', marginBottom: '30px' }}
 				></div>
+				<div className="skeleton skeleton-card"></div>
 				<div className="skeleton skeleton-card"></div>
 			</main>
 		)
