@@ -17,7 +17,8 @@ import {
 	renameFamily,
 	clearTodayLogs,
 	updateProfileDb,
-	showToast
+	showToast,
+	getQuestProgress
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -26,9 +27,11 @@ import TodayTab from './tabs/TodayTab'
 import DiaryTab from './tabs/DiaryTab'
 import AnalyticsTab from './tabs/AnalyticsTab'
 import FamilyTab from './tabs/FamilyTab'
+import QuestsTab from './tabs/QuestsTab' // НОВЫЙ ИМПОРТ
 import RewardModal from './modals/RewardModal'
 import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
+import ShopModal from './modals/ShopModal'
 
 const todayKey = () => {
 	const d = new Date()
@@ -42,6 +45,7 @@ function MainScreen() {
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
 	const [chartTotals, setChartTotals] = useState({})
+	const [quests, setQuests] = useState(null) // Стейт для заданий
 	const [isLoading, setIsLoading] = useState(true)
 	const [isAdding, setIsAdding] = useState(false)
 
@@ -50,6 +54,7 @@ function MainScreen() {
 	const [showCustom, setShowCustom] = useState(false)
 	const [settings, setSettings] = useState(false)
 	const [activeInfo, setActiveInfo] = useState(null)
+	const [showShop, setShowShop] = useState(false)
 	const [isDark, setIsDark] = useState(
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
@@ -62,15 +67,13 @@ function MainScreen() {
 	const [invites, setInvites] = useState([])
 	const [familyLoading, setFamilyLoading] = useState(false)
 
-	// Стейт для Toasts
 	const [toasts, setToasts] = useState([])
 
 	const touchStart = useRef({ x: 0, y: 0 })
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
-	const tabsOrder = ['today', 'diary', 'analytics', 'family']
+	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests'] // ДОБАВИЛИ КВЕСТЫ
 
-	// Слушатель всплывающих уведомлений
 	useEffect(() => {
 		const handleToast = e => {
 			const { message, type } = e.detail
@@ -78,7 +81,7 @@ function MainScreen() {
 			setToasts(prev => [...prev, { id, message, type }])
 			setTimeout(() => {
 				setToasts(prev => prev.filter(t => t.id !== id))
-			}, 3000) // Исчезает через 3 сек
+			}, 3000)
 		}
 		window.addEventListener('app-toast', handleToast)
 		return () => window.removeEventListener('app-toast', handleToast)
@@ -176,6 +179,9 @@ function MainScreen() {
 		const invs = await getMyInvites(userId)
 		setFamilies(fams)
 		setInvites(invs)
+		// Обновляем задания, так как семейный прогресс изменился
+		const q = await getQuestProgress(userId, today, fams)
+		setQuests(q)
 	}
 
 	useEffect(() => {
@@ -207,30 +213,22 @@ function MainScreen() {
 		loadData()
 	}, [userId, today])
 
-	// REALTIME: Мгновенное обновление семьи
 	useEffect(() => {
-		if (tab === 'family' && !isLoading) {
+		if ((tab === 'family' || tab === 'quests') && !isLoading) {
 			loadFamilies()
-
-			// Подписываемся на изменения в water_logs
 			const channel = supabase
 				.channel('family-updates')
 				.on(
 					'postgres_changes',
 					{ event: '*', schema: 'public', table: 'water_logs' },
-					() => {
-						loadFamilies() // Если кто-то добавил воду — обновляем экран
-					}
+					() => loadFamilies()
 				)
 				.on(
 					'postgres_changes',
 					{ event: '*', schema: 'public', table: 'family_members' },
-					() => {
-						loadFamilies() // Если кто-то принял приглашение — обновляем
-					}
+					() => loadFamilies()
 				)
 				.subscribe()
-
 			return () => {
 				supabase.removeChannel(channel)
 			}
@@ -299,6 +297,10 @@ function MainScreen() {
 				JSON.stringify(updatedProfile)
 			)
 			showToast(`+${value} мл добавлено! 💧`, 'success')
+
+			// Пересчитываем задания после добавления воды
+			const q = await getQuestProgress(userId, today, families)
+			setQuests(q)
 		} catch (err) {
 			setLogs(previousLogs)
 			setProfile(previousProfile)
@@ -313,12 +315,10 @@ function MainScreen() {
 		const targetEl = diamondTargetRef.current
 		if (!targetEl) return
 		const targetRect = targetEl.getBoundingClientRect()
-
 		const flyer = document.createElement('div')
 		flyer.innerText = '✦'
 		flyer.style.cssText = `position: fixed; color: #c49b00; font-size: 40px; z-index: 9999; pointer-events: none; transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); text-shadow: 0 4px 10px rgba(196, 155, 0, 0.5); left: ${window.innerWidth / 2}px; top: ${window.innerHeight / 2}px; transform: translate(-50%, -50%) scale(1.5);`
 		document.body.appendChild(flyer)
-
 		requestAnimationFrame(() => {
 			requestAnimationFrame(() => {
 				flyer.style.left = `${targetRect.left + targetRect.width / 2}px`
@@ -326,7 +326,6 @@ function MainScreen() {
 				flyer.style.transform = 'translate(-50%, -50%) scale(0.5)'
 			})
 		})
-
 		setTimeout(() => {
 			flyer.remove()
 			setDiamondPop(true)
@@ -448,6 +447,11 @@ function MainScreen() {
 		setFamilyLoading(false)
 	}
 
+	// Пока просто уведомление, так как клейм мы пока не написали (понадобится отдельная таблица)
+	async function handleClaimQuest(questId, reward) {
+		showToast(`Получено ${reward} алмазов! (В разработке)`, 'success')
+	}
+
 	const weekData = useMemo(
 		() =>
 			Array.from({ length: 7 }, (_, index) => {
@@ -501,7 +505,6 @@ function MainScreen() {
 		)
 	}
 
-	// СКЕЛЕТОН-ЗАГРУЗКА
 	if (isLoading) {
 		return (
 			<main
@@ -516,7 +519,6 @@ function MainScreen() {
 					className="skeleton skeleton-text"
 					style={{ width: '70%', height: '30px', marginBottom: '30px' }}
 				></div>
-
 				<div
 					style={{
 						display: 'grid',
@@ -538,7 +540,6 @@ function MainScreen() {
 						style={{ height: '50px' }}
 					></div>
 				</div>
-
 				<div className="skeleton skeleton-card"></div>
 				<div className="skeleton skeleton-card"></div>
 			</main>
@@ -547,7 +548,6 @@ function MainScreen() {
 
 	return (
 		<main className={`water-app ${isDark ? 'dark-theme' : ''}`}>
-			{/* КОНТЕЙНЕР ДЛЯ TOASTS */}
 			<div className="toast-container">
 				{toasts.map(t => (
 					<div
@@ -577,7 +577,7 @@ function MainScreen() {
 				<div
 					ref={diamondTargetRef}
 					className={diamondPop ? 'pop-anim' : ''}
-					onClick={() => setActiveInfo('diamonds')}
+					onClick={() => setShowShop(true)}
 				>
 					<span>✦</span>
 					<strong>{profile?.diamonds || 0}</strong>
@@ -641,9 +641,19 @@ function MainScreen() {
 						familyLoading={familyLoading}
 					/>
 				)}
+				{tab === 'quests' && (
+					<QuestsTab
+						quests={quests}
+						handleClaimQuest={handleClaimQuest}
+					/>
+				)}
 			</div>
 
-			<nav className="bottom-nav">
+			{/* ТЕПЕРЬ 5 ВКЛАДОК ВНИЗУ */}
+			<nav
+				className="bottom-nav"
+				style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}
+			>
 				<NavButton
 					active={tab === 'today'}
 					icon="⌂"
@@ -669,6 +679,12 @@ function MainScreen() {
 					onClick={() => goToTab('family')}
 					badge={invites.length}
 				/>
+				<NavButton
+					active={tab === 'quests'}
+					icon="🎯"
+					label="Задания"
+					onClick={() => goToTab('quests')}
+				/>
 			</nav>
 
 			<RewardModal
@@ -689,6 +705,11 @@ function MainScreen() {
 				setActiveInfo={setActiveInfo}
 				goal={goal}
 				total={total}
+			/>
+			<ShopModal
+				show={showShop}
+				onClose={() => setShowShop(false)}
+				diamonds={profile?.diamonds || 0}
 			/>
 		</main>
 	)
