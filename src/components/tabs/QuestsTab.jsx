@@ -1,5 +1,6 @@
 export default function QuestsTab({ quests, handleClaimQuest }) {
-	if (!quests) return <p className="empty-note">Загрузка заданий...</p>
+	if (!quests || !quests.personal)
+		return <p className="empty-note">Загрузка заданий...</p>
 
 	return (
 		<section className="section-block page-block">
@@ -14,95 +15,58 @@ export default function QuestsTab({ quests, handleClaimQuest }) {
 					marginTop: '16px'
 				}}
 			>
-				{/* Ранняя пташка */}
-				<div className="quest-card">
+				{/* ЛИЧНЫЕ ЗАДАНИЯ */}
+				{quests.personal.map(q => (
 					<div
-						style={{
-							display: 'flex',
-							justifyContent: 'space-between',
-							marginBottom: '8px'
-						}}
+						key={q.id}
+						className="quest-card"
 					>
-						<div>
-							<div className="quest-title">Ранняя пташка</div>
-							<div className="quest-desc">Выпей 500 мл до 12:00</div>
-						</div>
-						<div className="quest-reward">+{quests.earlyBird.reward} ✦</div>
-					</div>
-					<div className="quest-progress-bg">
 						<div
-							className="quest-progress-fill"
 							style={{
-								width: `${(quests.earlyBird.progress / quests.earlyBird.goal) * 100}%`,
-								background: quests.earlyBird.done ? '#0ba360' : '#1886ad'
+								display: 'flex',
+								justifyContent: 'space-between',
+								marginBottom: '8px'
 							}}
-						/>
-					</div>
-					<div
-						style={{
-							display: 'flex',
-							justifyContent: 'space-between',
-							fontSize: '12px',
-							color: '#71869d',
-							marginTop: '6px'
-						}}
-					>
-						<span>
-							{quests.earlyBird.progress} / {quests.earlyBird.goal} мл
-						</span>
-						{quests.earlyBird.done && (
-							<span style={{ color: '#0ba360', fontWeight: 'bold' }}>
-								Выполнено!
-							</span>
-						)}
-					</div>
-				</div>
-
-				{/* Марафонец */}
-				<div className="quest-card">
-					<div
-						style={{
-							display: 'flex',
-							justifyContent: 'space-between',
-							marginBottom: '8px'
-						}}
-					>
-						<div>
-							<div className="quest-title">Марафонец</div>
-							<div className="quest-desc">Сделай 5 записей воды за день</div>
+						>
+							<div>
+								<div className="quest-title">
+									{q.icon} {q.title}
+								</div>
+								<div className="quest-desc">{q.description}</div>
+							</div>
+							<div className="quest-reward">+{q.reward} ✦</div>
 						</div>
-						<div className="quest-reward">+{quests.marathon.reward} ✦</div>
-					</div>
-					<div className="quest-progress-bg">
+						<div className="quest-progress-bg">
+							<div
+								className="quest-progress-fill"
+								style={{
+									width: `${(q.progress / q.goal) * 100}%`,
+									background: q.done ? '#0ba360' : '#1886ad'
+								}}
+							/>
+						</div>
 						<div
-							className="quest-progress-fill"
 							style={{
-								width: `${(quests.marathon.progress / quests.marathon.goal) * 100}%`,
-								background: quests.marathon.done ? '#0ba360' : '#1886ad'
+								display: 'flex',
+								justifyContent: 'space-between',
+								fontSize: '12px',
+								color: '#71869d',
+								marginTop: '6px'
 							}}
-						/>
-					</div>
-					<div
-						style={{
-							display: 'flex',
-							justifyContent: 'space-between',
-							fontSize: '12px',
-							color: '#71869d',
-							marginTop: '6px'
-						}}
-					>
-						<span>
-							{quests.marathon.progress} / {quests.marathon.goal} записей
-						</span>
-						{quests.marathon.done && (
-							<span style={{ color: '#0ba360', fontWeight: 'bold' }}>
-								Выполнено!
+						>
+							<span>
+								{q.progress} / {q.goal} {q.unit}
 							</span>
-						)}
+							{q.done && (
+								<span style={{ color: '#0ba360', fontWeight: 'bold' }}>
+									Выполнено!
+								</span>
+							)}
+						</div>
 					</div>
-				</div>
+				))}
 
-				{/* Семейный сундук */}
+				{/* СЕМЕЙНОЕ ЗАДАНИЕ */}
 				<div
 					className="quest-card"
 					style={{ border: '2px solid #fdcb6e' }}
@@ -119,25 +83,23 @@ export default function QuestsTab({ quests, handleClaimQuest }) {
 								className="quest-title"
 								style={{ color: '#c49b00' }}
 							>
-								Семейный сундук 🎁
+								{quests.family.icon} {quests.family.title}
 							</div>
-							<div className="quest-desc">
-								Вся семья должна выпить 10 литров
-							</div>
+							<div className="quest-desc">{quests.family.description}</div>
 						</div>
 						<div
 							className="quest-reward"
 							style={{ background: '#fff0bf', color: '#c49b00' }}
 						>
-							+{quests.familyChest.reward} ✦
+							+{quests.family.reward} ✦
 						</div>
 					</div>
 					<div className="quest-progress-bg">
 						<div
 							className="quest-progress-fill"
 							style={{
-								width: `${(quests.familyChest.progress / quests.familyChest.goal) * 100}%`,
-								background: quests.familyChest.done ? '#0ba360' : '#fdcb6e'
+								width: `${(quests.family.progress / quests.family.goal) * 100}%`,
+								background: quests.family.done ? '#0ba360' : '#fdcb6e'
 							}}
 						/>
 					</div>
@@ -151,9 +113,10 @@ export default function QuestsTab({ quests, handleClaimQuest }) {
 						}}
 					>
 						<span>
-							{quests.familyChest.progress} / {quests.familyChest.goal} мл
+							{quests.family.progress} / {quests.family.goal}{' '}
+							{quests.family.unit}
 						</span>
-						{quests.familyChest.done && (
+						{quests.family.done && (
 							<span style={{ color: '#0ba360', fontWeight: 'bold' }}>
 								Выполнено!
 							</span>

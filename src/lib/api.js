@@ -1,4 +1,5 @@
 import { supabase } from './telegram'
+import questsData from '../data/quests.json'
 
 // ==========================================
 // БАЗОВЫЕ ФУНКЦИИ
@@ -68,7 +69,7 @@ export async function getLast7DaysTotal(userId) {
 }
 
 // ==========================================
-// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ
+// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ЧЕРЕЗ API)
 // ==========================================
 
 async function callUserApi(action, payload = {}) {
@@ -229,7 +230,7 @@ export async function renameFamily(familyId, newName) {
 }
 
 // ==========================================
-// УВЕДОМЛЕНИЯ И ЗАДАНИЯ (ТОЛЬКО ОДИН РАЗ)
+// УВЕДОМЛЕНИЯ И ЗАДАНИЯ
 // ==========================================
 
 export function showToast(message, type = 'info') {
@@ -247,19 +248,44 @@ export async function getQuestProgress(userId, today, families) {
 		.eq('user_id', userId)
 		.gte('logged_at', new Date(`${today}T00:00:00+03:00`).toISOString())
 
-	const totalDrunk = (logs || []).reduce((sum, log) => sum + log.amount_ml, 0)
-	const logCount = logs ? logs.length : 0
+	const safeLogs = logs || []
+	const totalDrunk = safeLogs.reduce((sum, log) => sum + log.amount_ml, 0)
+	const logCount = safeLogs.length
+	const waterGoal = 2100
 
-	const earlyLogs = (logs || []).filter(l => {
-		let raw = l.logged_at
-		if (!raw.includes('Z') && !raw.includes('+')) raw += 'Z'
-		const h = new Date(raw).getUTCHours() + 3
-		return h < 12
+	// Берем 3 задания из JSON (пока просто первые три, позже сделаем рандом)
+	const personalList = questsData.personalQuests.slice(0, 3).map(q => {
+		let progress = 0
+		let done = false
+
+		if (q.type === 'early_ml') {
+			const earlyLogs = safeLogs.filter(l => {
+				let raw = l.logged_at
+				if (!raw.includes('Z') && !raw.includes('+')) raw += 'Z'
+				return new Date(raw).getUTCHours() + 3 < 12
+			})
+			progress = earlyLogs.reduce((sum, l) => sum + l.amount_ml, 0)
+			done = progress >= q.goal
+		} else if (q.type === 'log_count') {
+			progress = logCount
+			done = progress >= q.goal
+		} else if (q.type === 'late_ml') {
+			const lateLogs = safeLogs.filter(l => {
+				let raw = l.logged_at
+				if (!raw.includes('Z') && !raw.includes('+')) raw += 'Z'
+				return new Date(raw).getUTCHours() + 3 >= 21
+			})
+			progress = lateLogs.reduce((sum, l) => sum + l.amount_ml, 0)
+			done = progress >= q.goal
+		} else if (q.type === 'complete_goal') {
+			progress = totalDrunk
+			done = progress >= waterGoal
+		} else {
+			progress = 0
+		}
+
+		return { ...q, progress: Math.min(progress, q.goal), done }
 	})
-	const earlyTotal = earlyLogs.reduce((sum, log) => sum + log.amount_ml, 0)
-	const earlyBirdDone = earlyTotal >= 500
-
-	const marathonDone = logCount >= 5
 
 	let familyTotal = 0
 	if (families && families.length > 0) {
@@ -269,26 +295,16 @@ export async function getQuestProgress(userId, today, families) {
 			})
 		})
 	}
-	const familyChestDone = familyTotal >= 10000
+
+	const familyQuestDef = questsData.familyQuests[0]
+	const familyQuest = {
+		...familyQuestDef,
+		progress: Math.min(familyTotal, familyQuestDef.goal),
+		done: familyTotal >= familyQuestDef.goal
+	}
 
 	return {
-		earlyBird: {
-			done: earlyBirdDone,
-			progress: Math.min(earlyTotal, 500),
-			goal: 500,
-			reward: 5
-		},
-		marathon: {
-			done: marathonDone,
-			progress: Math.min(logCount, 5),
-			goal: 5,
-			reward: 3
-		},
-		familyChest: {
-			done: familyChestDone,
-			progress: Math.min(familyTotal, 10000),
-			goal: 10000,
-			reward: 15
-		}
+		personal: personalList,
+		family: familyQuest
 	}
 }

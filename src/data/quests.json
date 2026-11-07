@@ -1,0 +1,86 @@
+{
+	"personalQuests": [
+		{
+			"id": "early_bird",
+			"title": "Ранняя пташка",
+			"description": "Выпей 500 мл до 12:00",
+			"type": "early_ml",
+			"goal": 500,
+			"unit": "мл",
+			"reward": 5,
+			"icon": "🌅"
+		},
+		{
+			"id": "marathon",
+			"title": "Марафонец",
+			"description": "Сделай 5 записей за день",
+			"type": "log_count",
+			"goal": 5,
+			"unit": "записей",
+			"reward": 3,
+			"icon": "🏃"
+		},
+		{
+			"id": "night_owl",
+			"title": "Полуночник",
+			"description": "Выпей воду после 21:00",
+			"type": "late_ml",
+			"goal": 200,
+			"unit": "мл",
+			"reward": 4,
+			"icon": "🦉"
+		},
+		{
+			"id": "steady_pace",
+			"title": "Ровный темп",
+			"description": "Выпей по стакану (200 мл) 3 раза за день",
+			"type": "exact_200_logs",
+			"goal": 3,
+			"unit": "раз",
+			"reward": 4,
+			"icon": "🥛"
+		},
+		{
+			"id": "big_gulp",
+			"title": "Большой глоток",
+			"description": "Выпей 400 мл за один раз",
+			"type": "single_log_400",
+			"goal": 1,
+			"unit": "раз",
+			"reward": 2,
+			"icon": "🐳"
+		},
+		{
+			"id": "goal_reacher",
+			"title": "Точно в цель",
+			"description": "Выполни свою дневную норму воды",
+			"type": "complete_goal",
+			"goal": 100,
+			"unit": "%",
+			"reward": 5,
+			"icon": "🎯"
+		}
+	],
+	"familyQuests": [
+		{
+			"id": "family_chest_10k",
+			"title": "Семейный сундук",
+			"description": "Вся семья вместе выпила 10 литров",
+			"type": "family_total",
+			"goal": 10000,
+			"unit": "мл",
+			"reward": 15,
+			"icon": "🎁"
+		},
+		{
+			"id": "family_sync",
+			"title": "Синхронность",
+			"description": "Выпейте воду одновременно с кем-то из семьи",
+			"type": "sync",
+			"goal": 1,
+			"unit": "раз",
+			"reward": 10,
+			"icon": "🤝"
+		}
+	]
+}
