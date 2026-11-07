@@ -1327,3 +1327,33 @@ body {
 	border: 3px solid #ff4500;
 	box-shadow: 0 0 15px #ff4500;
 }
+/* ИСПРАВЛЕНИЕ ЦВЕТОВ ДЛЯ ТЕМНЫХ ТЕМ */
+.water-app.theme-space .compact-stats div,
+.water-app.theme-space .log-row {
+	background: rgba(255, 255, 255, 0.1) !important;
+	color: #fff !important;
+}
+.water-app.theme-space .compact-stats strong,
+.water-app.theme-space .log-row strong {
+	color: #fff !important;
+}
+.water-app.theme-space .log-row small {
+	color: rgba(255, 255, 255, 0.7) !important;
+}
+.water-app.theme-space h2 {
+	color: #fff !important;
+}
+
+/* РАМКИ АВАТАРОК (УСИЛЕННЫЕ) */
+.family-avatar.frame-gold {
+	border: 3px solid #ffd700 !important;
+	box-shadow: 0 0 10px #ffd700 !important;
+}
+.family-avatar.frame-neon {
+	border: 3px solid #9d4edd !important;
+	box-shadow: 0 0 12px #9d4edd !important;
+}
+.family-avatar.frame-fire {
+	border: 3px solid #ff4500 !important;
+	box-shadow: 0 0 12px #ff4500 !important;
+}

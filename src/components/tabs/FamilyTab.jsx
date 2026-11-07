@@ -12,7 +12,9 @@ export default function FamilyTab({
 	handleDeleteFamily,
 	handleKickMember,
 	handleRenameFamily,
-	familyLoading
+	familyLoading,
+	appliedFrame,
+	appliedTitle
 }) {
 	const [newFamilyName, setNewFamilyName] = useState('')
 	const [inviteId, setInviteId] = useState('')
@@ -30,7 +32,6 @@ export default function FamilyTab({
 			.catch(() => showToast('Ваш ID: ' + userId, 'info'))
 	}
 
-	// Функция для выбора цвета аватарки (от 0 до 5)
 	const getAvatarColor = name => {
 		if (!name) return 0
 		const charCode = name.charCodeAt(0) + (name.length || 0)
@@ -202,6 +203,8 @@ export default function FamilyTab({
 							{fam.members.map(m => {
 								if (m.status !== 'accepted' && m.user_id !== userId) return null
 								const colorClass = `avatar-color-${getAvatarColor(m.first_name)}`
+								const frameClass = m.user_id === userId ? appliedFrame : ''
+								const title = m.user_id === userId ? appliedTitle : null
 
 								return (
 									<div
@@ -222,9 +225,8 @@ export default function FamilyTab({
 												gap: '10px'
 											}}
 										>
-											{/* ЦВЕТНАЯ АВАТАРКА */}
 											<div
-												className={`family-avatar ${colorClass}`}
+												className={`family-avatar ${colorClass} ${frameClass}`}
 												style={{
 													width: '36px',
 													height: '36px',
@@ -233,7 +235,8 @@ export default function FamilyTab({
 													alignItems: 'center',
 													justifyContent: 'center',
 													fontWeight: 'bold',
-													color: '#fff'
+													color: '#fff',
+													flexShrink: 0
 												}}
 											>
 												{m.first_name[0]}
@@ -249,7 +252,27 @@ export default function FamilyTab({
 													{m.first_name} {m.role === 'owner' && '👑'}{' '}
 													{m.user_id === userId && '(Вы)'}
 												</div>
-												<div style={{ fontSize: '12px', color: '#71869d' }}>
+												{/* ТИТУЛ В СЕМЬЕ */}
+												{title && title.title !== 'Без титула' && (
+													<div
+														className={`user-title ${title.cssClass}`}
+														style={{
+															fontSize: '10px',
+															padding: '1px 6px',
+															marginTop: '2px',
+															display: 'inline-block'
+														}}
+													>
+														{title.icon} {title.title}
+													</div>
+												)}
+												<div
+													style={{
+														fontSize: '12px',
+														color: '#71869d',
+														marginTop: '2px'
+													}}
+												>
 													{m.drank_today} / {m.water_goal_ml} мл
 												</div>
 											</div>

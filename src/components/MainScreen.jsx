@@ -63,9 +63,10 @@ function MainScreen() {
 	const [appliedTheme, setAppliedTheme] = useState(
 		() => localStorage.getItem('applied_theme') || ''
 	)
-	const [appliedTitle, setAppliedTitle] = useState(
-		() => localStorage.getItem('applied_title') || ''
-	)
+	const [appliedTitle, setAppliedTitle] = useState(() => {
+		const saved = localStorage.getItem('applied_title')
+		return saved ? JSON.parse(saved) : null
+	})
 	const [appliedFrame, setAppliedFrame] = useState(
 		() => localStorage.getItem('applied_frame') || ''
 	)
@@ -85,11 +86,18 @@ function MainScreen() {
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests']
 
-	// ФУНКЦИЯ ПРИМЕНЕНИЯ ПРЕДМЕТА
+	// ФУНКЦИЯ ПРИМЕНЕНИЯ ПРЕДМЕТА С УЧЕТОМ РЕЖИМА ТЕМЫ
 	const applyItem = item => {
 		if (item.id.startsWith('theme_')) {
 			setAppliedTheme(item.cssClass)
 			localStorage.setItem('applied_theme', item.cssClass)
+
+			// Если тема "темная" - принудительно включаем темный режим
+			if (item.themeMode === 'dark') {
+				setIsDark(true)
+			} else if (item.themeMode === 'light') {
+				setIsDark(false)
+			}
 		} else if (item.id.startsWith('title_')) {
 			setAppliedTitle(item)
 			localStorage.setItem('applied_title', JSON.stringify(item))
@@ -98,15 +106,6 @@ function MainScreen() {
 			localStorage.setItem('applied_frame', item.cssClass)
 		}
 	}
-
-	useEffect(() => {
-		const savedTitle = localStorage.getItem('applied_title')
-		if (savedTitle) {
-			try {
-				setAppliedTitle(JSON.parse(savedTitle))
-			} catch (e) {}
-		}
-	}, [])
 
 	useEffect(() => {
 		const handleToast = e => {
@@ -675,7 +674,8 @@ function MainScreen() {
 						handleKickMember={handleKickMember}
 						handleRenameFamily={handleRenameFamily}
 						familyLoading={familyLoading}
-						appliedFrame={appliedFrame} // ПЕРЕДАЕМ РАМКУ В СЕМЬЮ
+						appliedFrame={appliedFrame}
+						appliedTitle={appliedTitle}
 					/>
 				)}
 				{tab === 'quests' && (
@@ -735,6 +735,10 @@ function MainScreen() {
 				userId={userId}
 				isDark={isDark}
 				setIsDark={setIsDark}
+				appliedTheme={appliedTheme}
+				applyItem={applyItem}
+				appliedTitle={appliedTitle}
+				appliedFrame={appliedFrame}
 			/>
 			<InfoModal
 				activeInfo={activeInfo}
@@ -742,8 +746,6 @@ function MainScreen() {
 				goal={goal}
 				total={total}
 			/>
-
-			{/* ПЕРЕДАЕМ ФУНКЦИЮ ПРИМЕНЕНИЯ */}
 			<ShopModal
 				show={showShop}
 				onClose={() => setShowShop(false)}
