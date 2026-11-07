@@ -14,7 +14,7 @@ export default function FamilyTab({
 	handleKickMember,
 	handleRenameFamily,
 	familyLoading,
-	onMemberClick // ДОБАВИЛИ КЛИК
+	onMemberClick
 }) {
 	const [newFamilyName, setNewFamilyName] = useState('')
 	const [inviteId, setInviteId] = useState('')
@@ -148,180 +148,195 @@ export default function FamilyTab({
 			{families.length === 0 ? (
 				<p className="empty-note">Ты пока не состоишь ни в одной группе.</p>
 			) : (
-				families.map(fam => (
-					<div
-						key={fam.id}
-						className="family-card"
-						style={{ marginBottom: '16px' }}
-					>
-						<div
-							style={{
-								display: 'flex',
-								justifyContent: 'space-between',
-								alignItems: 'center',
-								marginBottom: '12px'
-							}}
-						>
-							<h3 style={{ margin: 0, fontSize: '18px', color: '#173f70' }}>
-								{fam.name}
-							</h3>
-							<div style={{ display: 'flex', gap: '8px' }}>
-								<button
-									onClick={() => setSelectedFamily(fam)}
-									style={{
-										background: '#0ba360',
-										color: '#fff',
-										border: 'none',
-										padding: '6px 12px',
-										borderRadius: '8px',
-										fontSize: '13px',
-										fontWeight: 'bold'
-									}}
-								>
-									+ Пригласить
-								</button>
-								<button
-									onClick={() => setSettingsFamily(fam)}
-									style={{
-										background: '#eef5fb',
-										color: '#173f70',
-										border: 'none',
-										padding: '6px 10px',
-										borderRadius: '8px',
-										fontSize: '16px'
-									}}
-								>
-									⚙
-								</button>
-							</div>
-						</div>
+				families.map(fam => {
+					const isOwner = fam.owner_id === userId // ПРОВЕРКА: ТЫ ЛИ СОЗДАТЕЛЬ?
 
+					return (
 						<div
-							style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}
+							key={fam.id}
+							className="family-card"
+							style={{ marginBottom: '16px' }}
 						>
-							{fam.members.map(m => {
-								if (m.status !== 'accepted' && m.user_id !== userId) return null
-								const colorClass = `avatar-color-${getAvatarColor(m.first_name)}`
-								const frameClass = m.active_frame_css || ''
-								const titleObj = shopData.titles.find(
-									t => t.id === m.active_title_id
-								)
-
-								return (
-									<div
-										key={m.id}
-										onClick={() => onMemberClick(m)} // ДОБАВИЛИ КЛИК
+							<div
+								style={{
+									display: 'flex',
+									justifyContent: 'space-between',
+									alignItems: 'center',
+									marginBottom: '12px'
+								}}
+							>
+								<h3 style={{ margin: 0, fontSize: '18px', color: '#173f70' }}>
+									{fam.name}
+								</h3>
+								<div style={{ display: 'flex', gap: '8px' }}>
+									{/* Кнопку "Пригласить" видим все */}
+									<button
+										onClick={() => setSelectedFamily(fam)}
 										style={{
-											display: 'flex',
-											flexDirection: 'column',
-											gap: '8px',
-											padding: '10px',
-											background: '#f8fafc',
-											borderRadius: '12px',
-											cursor: 'pointer',
-											transition: 'transform 0.1s'
+											background: '#0ba360',
+											color: '#fff',
+											border: 'none',
+											padding: '6px 12px',
+											borderRadius: '8px',
+											fontSize: '13px',
+											fontWeight: 'bold'
 										}}
-										onMouseDown={e =>
-											(e.currentTarget.style.transform = 'scale(0.98)')
-										}
-										onMouseUp={e =>
-											(e.currentTarget.style.transform = 'scale(1)')
-										}
-										onMouseLeave={e =>
-											(e.currentTarget.style.transform = 'scale(1)')
-										}
 									>
+										+ Пригласить
+									</button>
+
+									{/* Кнопку "Настройки" (шестеренку) видит только создатель */}
+									{isOwner && (
+										<button
+											onClick={() => setSettingsFamily(fam)}
+											style={{
+												background: '#eef5fb',
+												color: '#173f70',
+												border: 'none',
+												padding: '6px 10px',
+												borderRadius: '8px',
+												fontSize: '16px'
+											}}
+										>
+											⚙
+										</button>
+									)}
+								</div>
+							</div>
+
+							<div
+								style={{
+									display: 'flex',
+									flexDirection: 'column',
+									gap: '10px'
+								}}
+							>
+								{fam.members.map(m => {
+									if (m.status !== 'accepted' && m.user_id !== userId)
+										return null
+									const colorClass = `avatar-color-${getAvatarColor(m.first_name)}`
+									const frameClass = m.active_frame_css || ''
+									const titleObj = shopData.titles.find(
+										t => t.id === m.active_title_id
+									)
+
+									return (
 										<div
+											key={m.id}
+											onClick={() => onMemberClick(m)}
 											style={{
 												display: 'flex',
-												alignItems: 'center',
-												gap: '10px'
+												flexDirection: 'column',
+												gap: '8px',
+												padding: '10px',
+												background: '#f8fafc',
+												borderRadius: '12px',
+												cursor: 'pointer',
+												transition: 'transform 0.1s'
 											}}
+											onMouseDown={e =>
+												(e.currentTarget.style.transform = 'scale(0.98)')
+											}
+											onMouseUp={e =>
+												(e.currentTarget.style.transform = 'scale(1)')
+											}
+											onMouseLeave={e =>
+												(e.currentTarget.style.transform = 'scale(1)')
+											}
 										>
 											<div
-												className={`family-avatar ${colorClass} ${frameClass}`}
 												style={{
-													width: '36px',
-													height: '36px',
-													borderRadius: '50%',
 													display: 'flex',
 													alignItems: 'center',
-													justifyContent: 'center',
-													fontWeight: 'bold',
-													color: '#fff',
-													flexShrink: 0
+													gap: '10px'
 												}}
 											>
-												{m.first_name[0]}
-											</div>
-											<div style={{ flex: 1 }}>
 												<div
+													className={`family-avatar ${colorClass} ${frameClass}`}
 													style={{
-														fontWeight: '700',
-														fontSize: '14px',
-														color: '#173f70'
+														width: '36px',
+														height: '36px',
+														borderRadius: '50%',
+														display: 'flex',
+														alignItems: 'center',
+														justifyContent: 'center',
+														fontWeight: 'bold',
+														color: '#fff',
+														flexShrink: 0
 													}}
 												>
-													{m.first_name} {m.role === 'owner' && '👑'}{' '}
-													{m.user_id === userId && '(Вы)'}
+													{m.first_name[0]}
 												</div>
-												{titleObj && titleObj.id !== 'title_default' && (
+												<div style={{ flex: 1 }}>
 													<div
-														className={`user-title ${titleObj.cssClass}`}
 														style={{
-															fontSize: '10px',
-															padding: '1px 6px',
-															marginTop: '2px',
-															display: 'inline-block'
+															fontWeight: '700',
+															fontSize: '14px',
+															color: '#173f70'
 														}}
 													>
-														{titleObj.icon} {titleObj.title}
+														{m.first_name} {m.role === 'owner' && '👑'}{' '}
+														{m.user_id === userId && '(Вы)'}
 													</div>
-												)}
-												<div
+													{titleObj && titleObj.id !== 'title_default' && (
+														<div
+															className={`user-title ${titleObj.cssClass}`}
+															style={{
+																fontSize: '10px',
+																padding: '1px 6px',
+																marginTop: '2px',
+																display: 'inline-block'
+															}}
+														>
+															{titleObj.icon} {titleObj.title}
+														</div>
+													)}
+													<div
+														style={{
+															fontSize: '12px',
+															color: '#71869d',
+															marginTop: '2px'
+														}}
+													>
+														{m.drank_today} / {m.water_goal_ml} мл
+													</div>
+												</div>
+												<span
 													style={{
-														fontSize: '12px',
-														color: '#71869d',
-														marginTop: '2px'
+														fontSize: '14px',
+														fontWeight: 'bold',
+														color: m.progress >= 100 ? '#0ba360' : '#1886ad'
 													}}
 												>
-													{m.drank_today} / {m.water_goal_ml} мл
-												</div>
+													{m.progress}%
+												</span>
 											</div>
-											<span
-												style={{
-													fontSize: '14px',
-													fontWeight: 'bold',
-													color: m.progress >= 100 ? '#0ba360' : '#1886ad'
-												}}
-											>
-												{m.progress}%
-											</span>
-										</div>
-										<div
-											style={{
-												width: '100%',
-												height: '6px',
-												background: '#e2e8f0',
-												borderRadius: '3px',
-												overflow: 'hidden'
-											}}
-										>
 											<div
 												style={{
-													width: `${m.progress}%`,
-													height: '100%',
-													background: m.progress >= 100 ? '#0ba360' : '#1886ad',
-													transition: 'width 0.3s'
+													width: '100%',
+													height: '6px',
+													background: '#e2e8f0',
+													borderRadius: '3px',
+													overflow: 'hidden'
 												}}
-											/>
+											>
+												<div
+													style={{
+														width: `${m.progress}%`,
+														height: '100%',
+														background:
+															m.progress >= 100 ? '#0ba360' : '#1886ad',
+														transition: 'width 0.3s'
+													}}
+												/>
+											</div>
 										</div>
-									</div>
-								)
-							})}
+									)
+								})}
+							</div>
 						</div>
-					</div>
-				))
+					)
+				})
 			)}
 
 			<button
@@ -492,28 +507,26 @@ export default function FamilyTab({
 								</button>
 							))}
 
-						{settingsFamily.owner_id === userId && (
-							<button
-								onClick={() => {
-									if (window.confirm('Удалить группу навсегда?')) {
-										handleDeleteFamily(settingsFamily.id)
-										setSettingsFamily(null)
-									}
-								}}
-								style={{
-									width: '100%',
-									padding: '12px',
-									background: '#c17575',
-									border: 'none',
-									borderRadius: '12px',
-									fontWeight: 'bold',
-									marginBottom: '8px',
-									color: '#fff'
-								}}
-							>
-								🗑️ Удалить группу
-							</button>
-						)}
+						<button
+							onClick={() => {
+								if (window.confirm('Удалить группу навсегда?')) {
+									handleDeleteFamily(settingsFamily.id)
+									setSettingsFamily(null)
+								}
+							}}
+							style={{
+								width: '100%',
+								padding: '12px',
+								background: '#c17575',
+								border: 'none',
+								borderRadius: '12px',
+								fontWeight: 'bold',
+								marginBottom: '8px',
+								color: '#fff'
+							}}
+						>
+							🗑️ Удалить группу
+						</button>
 
 						<button
 							onClick={() => setSettingsFamily(null)}

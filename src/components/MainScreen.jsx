@@ -49,7 +49,7 @@ const todayKey = () => {
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
 	const isTelegram = !!window.Telegram?.WebApp?.initData
-	const isAdmin = userId === 6556768668 // ТВОЙ ID
+	const isAdmin = userId === 6556768668
 
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
@@ -311,6 +311,11 @@ function MainScreen() {
 				)
 
 				const fams = await getMyFamilies(userId, today)
+
+				// СЧИТАЕМ ТОЛЬКО ТЕ ГРУППЫ, ГДЕ ТЫ ВЛАДЕЛЕЦ (СОЗДАТЕЛЬ)
+				const ownedFamiliesCount = fams.filter(
+					f => f.owner_id === userId
+				).length
 				const maxMembers =
 					fams.length > 0 ? Math.max(...fams.map(f => f.members.length)) : 0
 				const titlesCount = inv.filter(i => i.startsWith('title_')).length
@@ -329,10 +334,12 @@ function MainScreen() {
 				setChartTotals(totals7Days)
 				setOwnedItems(inv)
 				setClaimedAchs(achs)
+
+				// ПЕРЕДАЕМ ownedFamiliesCount ВМЕСТО ОБЩЕГО КОЛИЧЕСТВА
 				setUserStats({
 					totalWater,
 					streak: dbProfile?.streak_days || 0,
-					familyCount: fams.length,
+					familyCount: ownedFamiliesCount,
 					maxFamilyMembers: maxMembers,
 					titlesBought: titlesCount
 				})
@@ -645,7 +652,6 @@ function MainScreen() {
 		)
 	}
 
-	// ЭКРАН БАНА
 	if (profile?.is_banned) {
 		return (
 			<div

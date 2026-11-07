@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import crypto from 'crypto'
 
+const ADMIN_ID = 6556768668 // Твой ID для обхода проверок
+
 export default async function handler(req, res) {
 	if (req.method !== 'POST') return res.status(405).end()
 
@@ -37,37 +39,44 @@ export default async function handler(req, res) {
 	const supabase = createClient(supabaseUrl, supabaseKey)
 
 	try {
+		// ПРОВЕРКА ПРАВ ДЛЯ ДЕЙСТВИЙ С ГРУППОЙ
+		if (['delete', 'kick', 'rename'].includes(action)) {
+			const { data: fam } = await supabase
+				.from('families')
+				.select('owner_id')
+				.eq('id', payload.familyId)
+				.single()
+			if (!fam) throw new Error('Группа не найдена')
+
+			// Если ты не создатель и не админ приложения — отказ
+			if (fam.owner_id !== user.id && Number(user.id) !== ADMIN_ID) {
+				throw new Error('Только создатель группы может это сделать')
+			}
+		}
+
 		if (action === 'create') {
 			const { data: family, error } = await supabase
 				.from('families')
-				.insert({ name: payload.name, owner_id: user.id })
+				.insert({
+					name: payload.name,
+					owner_id: user.id
+				})
 				.select()
 				.single()
+
 			if (error) throw error
-			await supabase
-				.from('family_members')
-				.insert({
-					family_id: family.id,
-					user_id: user.id,
-					role: 'owner',
-					status: 'accepted'
-				})
+
+			await supabase.from('family_members').insert({
+				family_id: family.id,
+				user_id: user.id,
+				role: 'owner',
+				status: 'accepted'
+			})
 			return res.status(200).json({ ok: true })
 		}
 
 		if (action === 'invite') {
 			const { familyId, inviteeId, familyName } = payload
-
-			// ПРОВЕРКА: Существует ли такой пользователь в базе?
-			const { data: targetUser } = await supabase
-				.from('users')
-				.select('id')
-				.eq('id', inviteeId)
-				.maybeSingle()
-			if (!targetUser)
-				throw new Error(
-					'Пользователь с таким ID не найден. Попросите его зайти в приложение!'
-				)
 
 			const { data: existing } = await supabase
 				.from('family_members')
@@ -75,17 +84,15 @@ export default async function handler(req, res) {
 				.eq('family_id', familyId)
 				.eq('user_id', inviteeId)
 				.maybeSingle()
-			if (existing)
-				throw new Error('Этот человек уже в группе или ждет подтверждения')
 
-			const { error } = await supabase
-				.from('family_members')
-				.insert({
-					family_id: familyId,
-					user_id: inviteeId,
-					role: 'member',
-					status: 'pending'
-				})
+			if (existing) throw new Error('Пользователь уже в группе')
+
+			const { error } = await supabase.from('family_members').insert({
+				family_id: familyId,
+				user_id: inviteeId,
+				role: 'member',
+				status: 'pending'
+			})
 			if (error) throw error
 
 			fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -107,7 +114,7 @@ export default async function handler(req, res) {
 				.update({ status: 'accepted' })
 				.eq('family_id', payload.familyId)
 				.eq('user_id', user.id)
-				.eq('status', 'pending') // Обновляем только если статус pending
+				.eq('status', 'pending')
 			if (error) throw error
 			return res.status(200).json({ ok: true })
 		}
