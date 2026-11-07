@@ -507,3 +507,9 @@ export async function adminGetPrices() {
 export async function adminUpdatePrices(prices) {
 	return callAdminApi('update_prices', { prices })
 }
+export async function adminRemoveItem(targetId, itemId) {
+	return callAdminApi('remove_item', { targetId, itemId })
+}
+export async function adminClearInventory(targetId) {
+	return callAdminApi('clear_inventory', { targetId })
+}
