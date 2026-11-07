@@ -466,3 +466,44 @@ export async function getQuestProgress(userId, today, families) {
 
 	return { personal: personalQuest, family: familyQuests }
 }
+
+// ==========================================
+// АДМИН-ПАНЕЛЬ
+// ==========================================
+
+async function callAdminApi(action, payload = {}) {
+	const initData = window.Telegram?.WebApp?.initData
+	if (!initData) return { error: 'Открыто вне Telegram' }
+	const res = await fetch('/api/admin', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ initData, action, payload })
+	})
+	const data = await res.json()
+	return res.ok ? data : { error: data.error }
+}
+
+export async function adminGetUsers() {
+	return callAdminApi('get_users')
+}
+export async function adminUpdateDiamonds(targetId, amount) {
+	return callAdminApi('update_diamonds', { targetId, amount })
+}
+export async function adminResetStreak(targetId) {
+	return callAdminApi('reset_streak', { targetId })
+}
+export async function adminToggleBan(targetId, isBanned) {
+	return callAdminApi('toggle_ban', { targetId, isBanned })
+}
+export async function adminGiveItem(targetId, itemId) {
+	return callAdminApi('give_item', { targetId, itemId })
+}
+export async function adminSendMessage(targetId, text) {
+	return callAdminApi('send_message', { targetId, text })
+}
+export async function adminGetPrices() {
+	return callAdminApi('get_prices')
+}
+export async function adminUpdatePrices(prices) {
+	return callAdminApi('update_prices', { prices })
+}

@@ -23,7 +23,8 @@ import {
 	buyItemApi,
 	getClaimedAchievements,
 	claimAchievementApi,
-	updateAppearanceDb
+	updateAppearanceDb,
+	adminGetPrices
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -33,11 +34,12 @@ import DiaryTab from './tabs/DiaryTab'
 import AnalyticsTab from './tabs/AnalyticsTab'
 import FamilyTab from './tabs/FamilyTab'
 import QuestsTab from './tabs/QuestsTab'
+import AdminTab from './tabs/AdminTab'
 import RewardModal from './modals/RewardModal'
 import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
 import ShopModal from './modals/ShopModal'
-import ProfileModal from './modals/ProfileModal' // ИМПОРТ ПРОФИЛЯ
+import ProfileModal from './modals/ProfileModal'
 
 const todayKey = () => {
 	const d = new Date()
@@ -47,6 +49,7 @@ const todayKey = () => {
 function MainScreen() {
 	const userId = Number(getTelegramUser().id)
 	const isTelegram = !!window.Telegram?.WebApp?.initData
+	const isAdmin = userId === 6556768668 // ТВОЙ ID
 
 	const [profile, setProfile] = useState(null)
 	const [logs, setLogs] = useState([])
@@ -65,8 +68,8 @@ function MainScreen() {
 		() => localStorage.getItem('family-water-theme') === 'dark'
 	)
 
-	// Стейт для выбранного профиля
 	const [selectedMember, setSelectedMember] = useState(null)
+	const [customPrices, setCustomPrices] = useState({})
 
 	const [ownedItems, setOwnedItems] = useState([])
 	const [appliedTheme, setAppliedTheme] = useState(
@@ -102,15 +105,17 @@ function MainScreen() {
 	const touchStart = useRef({ x: 0, y: 0 })
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
-	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests']
+	const tabsOrder = isAdmin
+		? ['today', 'diary', 'analytics', 'family', 'quests', 'admin']
+		: ['today', 'diary', 'analytics', 'family', 'quests']
 
 	useEffect(() => {
-		const cleaned = localStorage.getItem('inventory_cleaned_v4') // ОБНОВИЛИ ВЕРСИЮ
+		const cleaned = localStorage.getItem('inventory_cleaned_v5')
 		if (!cleaned) {
 			localStorage.removeItem('applied_theme')
 			localStorage.removeItem('applied_title')
 			localStorage.removeItem('applied_frame')
-			localStorage.setItem('inventory_cleaned_v4', 'true')
+			localStorage.setItem('inventory_cleaned_v5', 'true')
 			setAppliedTheme('')
 			setAppliedTitle(null)
 			setAppliedFrame('')
@@ -132,7 +137,7 @@ function MainScreen() {
 			} else {
 				setAppliedTitle(item)
 				localStorage.setItem('applied_title', JSON.stringify(item))
-				await updateAppearanceDb(item.id, appliedFrame) // СОХРАНЯЕМ В БАЗУ
+				await updateAppearanceDb(item.id, appliedFrame)
 			}
 		} else if (item.id.startsWith('frame_')) {
 			setAppliedFrame(item.cssClass)
@@ -140,7 +145,7 @@ function MainScreen() {
 			await updateAppearanceDb(
 				appliedTitle?.id || 'title_default',
 				item.cssClass
-			) // СОХРАНЯЕМ В БАЗУ
+			)
 		}
 	}
 
@@ -331,6 +336,12 @@ function MainScreen() {
 					maxFamilyMembers: maxMembers,
 					titlesBought: titlesCount
 				})
+
+				if (isAdmin) {
+					const pricesRes = await adminGetPrices()
+					if (pricesRes.prices) setCustomPrices(pricesRes.prices)
+				}
+
 				await loadFamilies()
 			} catch (err) {
 				console.error('Ошибка загрузки:', err)
@@ -339,7 +350,7 @@ function MainScreen() {
 			}
 		}
 		loadData()
-	}, [userId, today])
+	}, [userId, today, isAdmin])
 
 	useEffect(() => {
 		if ((tab === 'family' || tab === 'quests') && !isLoading) {
@@ -634,6 +645,56 @@ function MainScreen() {
 		)
 	}
 
+	// ЭКРАН БАНА
+	if (profile?.is_banned) {
+		return (
+			<div
+				style={{
+					display: 'flex',
+					flexDirection: 'column',
+					justifyContent: 'center',
+					alignItems: 'center',
+					height: '100vh',
+					background: '#111',
+					color: '#fff',
+					padding: '20px',
+					textAlign: 'center'
+				}}
+			>
+				<div style={{ fontSize: '60px', marginBottom: '16px' }}>⛔</div>
+				<h2 style={{ marginBottom: '12px', fontSize: '24px' }}>
+					Доступ заблокирован
+				</h2>
+				<p
+					style={{
+						fontSize: '15px',
+						color: '#888',
+						marginBottom: '24px',
+						maxWidth: '300px',
+						lineHeight: '1.5'
+					}}
+				>
+					Ваш аккаунт был заблокирован администратором за нарушение правил.
+				</p>
+				<a
+					href="tg://user?id=6556768668"
+					target="_blank"
+					rel="noreferrer"
+					style={{
+						padding: '12px 24px',
+						background: '#173f70',
+						color: '#fff',
+						textDecoration: 'none',
+						borderRadius: '12px',
+						fontWeight: 'bold'
+					}}
+				>
+					Написать в поддержку
+				</a>
+			</div>
+		)
+	}
+
 	return (
 		<main className={`water-app ${isDark ? 'dark-theme' : ''} ${appliedTheme}`}>
 			<div className="toast-container">
@@ -732,7 +793,7 @@ function MainScreen() {
 						handleKickMember={handleKickMember}
 						handleRenameFamily={handleRenameFamily}
 						familyLoading={familyLoading}
-						onMemberClick={m => setSelectedMember(m)} // ПЕРЕДАЕМ КЛИК
+						onMemberClick={m => setSelectedMember(m)}
 					/>
 				)}
 				{tab === 'quests' && (
@@ -744,11 +805,12 @@ function MainScreen() {
 						userStats={userStats}
 					/>
 				)}
+				{tab === 'admin' && isAdmin && <AdminTab />}
 			</div>
 
 			<nav
 				className="bottom-nav"
-				style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}
+				style={{ gridTemplateColumns: `repeat(${isAdmin ? 6 : 5}, 1fr)` }}
 			>
 				<NavButton
 					active={tab === 'today'}
@@ -781,6 +843,14 @@ function MainScreen() {
 					label="Задания"
 					onClick={() => goToTab('quests')}
 				/>
+				{isAdmin && (
+					<NavButton
+						active={tab === 'admin'}
+						icon="👑"
+						label="Админ"
+						onClick={() => goToTab('admin')}
+					/>
+				)}
 			</nav>
 
 			<RewardModal
@@ -814,9 +884,9 @@ function MainScreen() {
 				onApplyItem={applyItem}
 				ownedItems={ownedItems}
 				onBuyItem={handleBuyItem}
+				customPrices={customPrices}
 			/>
 
-			{/* ПОДКЛЮЧАЕМ ПРОФИЛЬ */}
 			<ProfileModal
 				user={selectedMember}
 				onClose={() => setSelectedMember(null)}

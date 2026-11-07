@@ -8,7 +8,8 @@ export default function ShopModal({
 	diamonds,
 	onApplyItem,
 	ownedItems,
-	onBuyItem
+	onBuyItem,
+	customPrices = {}
 }) {
 	const [activeTab, setActiveTab] = useState('themes')
 	const [spinning, setSpinning] = useState(false)
@@ -18,19 +19,26 @@ export default function ShopModal({
 
 	if (!show) return null
 
+	const getPrice = item => {
+		return customPrices[item.id] !== undefined
+			? customPrices[item.id]
+			: item.price
+	}
+
 	const handleBuy = async item => {
+		const price = getPrice(item)
 		if (isProcessing) return
-		if (diamonds < item.price)
-			return showToast('Недостаточно алмазов!', 'error')
+		if (diamonds < price) return showToast('Недостаточно алмазов!', 'error')
 
 		setIsProcessing(true)
-		const success = await onBuyItem(item)
+		const success = await onBuyItem(item, price)
 		setIsProcessing(false)
 	}
 
 	const openCase = c => {
+		const price = getPrice(c)
 		if (spinning) return
-		if (diamonds < c.price) return showToast('Недостаточно алмазов!', 'error')
+		if (diamonds < price) return showToast('Недостаточно алмазов!', 'error')
 
 		setSpinning(true)
 		setWonPrize(null)
@@ -43,7 +51,7 @@ export default function ShopModal({
 				shopData.titles.find(t => t.id === randomId) ||
 				shopData.frames.find(f => f.id === randomId)
 
-			const success = await onBuyItem(foundItem, c.price)
+			const success = await onBuyItem(foundItem, price)
 
 			if (success) {
 				setWonPrize(foundItem)
@@ -52,15 +60,15 @@ export default function ShopModal({
 		}, 2000)
 	}
 
-	const availableThemes = shopData.themes.filter(
-		t => !ownedItems.includes(t.id)
-	)
-	const availableTitles = shopData.titles.filter(
-		t => !ownedItems.includes(t.id) && t.id !== 'title_default'
-	)
-	const availableFrames = shopData.frames.filter(
-		f => !ownedItems.includes(f.id)
-	)
+	const availableThemes = shopData.themes
+		.filter(t => !ownedItems.includes(t.id))
+		.map(i => ({ ...i, price: getPrice(i) }))
+	const availableTitles = shopData.titles
+		.filter(t => !ownedItems.includes(t.id) && t.id !== 'title_default')
+		.map(i => ({ ...i, price: getPrice(i) }))
+	const availableFrames = shopData.frames
+		.filter(f => !ownedItems.includes(f.id))
+		.map(i => ({ ...i, price: getPrice(i) }))
 
 	return (
 		<div
@@ -77,14 +85,12 @@ export default function ShopModal({
 				>
 					×
 				</button>
-
 				<div
 					style={{
 						display: 'flex',
 						alignItems: 'center',
 						gap: '10px',
-						marginBottom: '20px',
-						paddingRight: '30px'
+						marginBottom: '20px'
 					}}
 				>
 					<div style={{ fontSize: '32px' }}>🛍️</div>
@@ -107,7 +113,6 @@ export default function ShopModal({
 						<span>✦</span> {diamonds}
 					</div>
 				</div>
-
 				<div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
 					<button
 						onClick={() => setActiveTab('themes')}
@@ -128,7 +133,6 @@ export default function ShopModal({
 						Кейсы
 					</button>
 				</div>
-
 				{activeTab === 'themes' && (
 					<div className="shop-grid">
 						{availableThemes.length === 0 ? (
@@ -156,7 +160,6 @@ export default function ShopModal({
 						)}
 					</div>
 				)}
-
 				{activeTab === 'style' && (
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
@@ -233,74 +236,75 @@ export default function ShopModal({
 						</div>
 					</div>
 				)}
-
 				{activeTab === 'cases' && (
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
 					>
-						{shopData.cases.map(c => (
-							<div
-								key={c.id}
-								style={{
-									display: 'flex',
-									alignItems: 'center',
-									gap: '12px',
-									background: '#f8fafc',
-									padding: '16px',
-									borderRadius: '16px',
-									border: `1px solid ${c.color}40`
-								}}
-							>
+						{shopData.cases.map(c => {
+							const price = getPrice(c)
+							return (
 								<div
+									key={c.id}
 									style={{
-										fontSize: '32px',
-										background: '#fff',
-										width: '60px',
-										height: '60px',
 										display: 'flex',
 										alignItems: 'center',
-										justifyContent: 'center',
+										gap: '12px',
+										background: '#f8fafc',
+										padding: '16px',
 										borderRadius: '16px',
-										boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+										border: `1px solid ${c.color}40`
 									}}
 								>
-									{c.icon}
-								</div>
-								<div style={{ flex: 1 }}>
 									<div
 										style={{
-											fontWeight: '800',
-											color: '#173f70',
-											fontSize: '16px'
+											fontSize: '32px',
+											background: '#fff',
+											width: '60px',
+											height: '60px',
+											display: 'flex',
+											alignItems: 'center',
+											justifyContent: 'center',
+											borderRadius: '16px',
+											boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
 										}}
 									>
-										{c.title}
+										{c.icon}
 									</div>
-									<div style={{ fontSize: '12px', color: '#71869d' }}>
-										{c.desc}
+									<div style={{ flex: 1 }}>
+										<div
+											style={{
+												fontWeight: '800',
+												color: '#173f70',
+												fontSize: '16px'
+											}}
+										>
+											{c.title}
+										</div>
+										<div style={{ fontSize: '12px', color: '#71869d' }}>
+											{c.desc}
+										</div>
 									</div>
+									<button
+										onClick={() => openCase(c)}
+										disabled={spinning || isProcessing}
+										style={{
+											background: c.color,
+											color: '#fff',
+											border: 'none',
+											padding: '10px 16px',
+											borderRadius: '12px',
+											fontWeight: 'bold',
+											cursor: 'pointer',
+											flexShrink: 0
+										}}
+									>
+										{price > 0 ? `${price} ✦` : 'Открыть'}
+									</button>
 								</div>
-								<button
-									onClick={() => openCase(c)}
-									disabled={spinning || isProcessing}
-									style={{
-										background: c.color,
-										color: '#fff',
-										border: 'none',
-										padding: '10px 16px',
-										borderRadius: '12px',
-										fontWeight: 'bold',
-										cursor: 'pointer',
-										flexShrink: 0
-									}}
-								>
-									{c.price > 0 ? `${c.price} ✦` : 'Открыть'}
-								</button>
-							</div>
-						))}
+							)
+						})}
 					</div>
 				)}
-
 				{spinning && (
 					<div
 						style={{
@@ -330,7 +334,6 @@ export default function ShopModal({
 						</p>
 					</div>
 				)}
-
 				{wonPrize && !spinning && (
 					<div
 						style={{
