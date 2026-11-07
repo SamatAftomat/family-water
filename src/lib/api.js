@@ -69,7 +69,7 @@ export async function getLast7DaysTotal(userId) {
 }
 
 // ==========================================
-// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ВОДА И ПРОФИЛЬ)
+// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ЧЕРЕЗ API)
 // ==========================================
 
 async function callUserApi(action, payload = {}) {
@@ -242,7 +242,6 @@ export function showToast(message, type = 'info') {
 export async function getQuestProgress(userId, today, families) {
 	if (!supabase) return null
 
-	// 1. ЛОГИ ЗА СЕГОДНЯ
 	const { data: logs } = await supabase
 		.from('water_logs')
 		.select('amount_ml, logged_at')
@@ -254,7 +253,6 @@ export async function getQuestProgress(userId, today, families) {
 	const logCount = safeLogs.length
 	const waterGoal = 2100
 
-	// 2. ВЫБОР 1 ПЕРСОНАЛЬНОГО ЗАДАНИЯ
 	const todayDate = new Date(today)
 	const dateSeed =
 		todayDate.getFullYear() * 10000 +
@@ -309,7 +307,6 @@ export async function getQuestProgress(userId, today, families) {
 		done: pDone
 	}
 
-	// 3. СЕМЕЙНЫЕ ЗАДАНИЯ
 	let familyQuests = []
 
 	if (families && families.length > 0) {
@@ -355,29 +352,57 @@ export async function getQuestProgress(userId, today, families) {
 			0
 		)
 
-		familyQuests = questsData.familyQuests.map(q => {
-			let progress = 0
-			if (q.period === 'week') progress = weekTotal
-			if (q.period === 'month') progress = monthTotal
+		const weeklyQuests = questsData.familyQuests
+			.filter(q => q.period === 'week')
+			.sort((a, b) => a.goal - b.goal)
+		const monthlyQuests = questsData.familyQuests
+			.filter(q => q.period === 'month')
+			.sort((a, b) => a.goal - b.goal)
 
-			if (q.type === 'family_all_goal') {
-				let allDone = true
-				families.forEach(fam => {
-					fam.members
-						.filter(m => m.status === 'accepted')
-						.forEach(m => {
-							if (m.progress < 100) allDone = false
-						})
-				})
-				progress = allDone ? 1 : 0
-			}
+		let activeWeekly = weeklyQuests.find(q => weekTotal < q.goal)
+		if (!activeWeekly) activeWeekly = weeklyQuests[weeklyQuests.length - 1]
 
-			return {
-				...q,
-				progress: Math.min(progress, q.goal),
-				done: progress >= q.goal
-			}
-		})
+		let activeMonthly = monthlyQuests.find(q => monthTotal < q.goal)
+		if (!activeMonthly) activeMonthly = monthlyQuests[monthlyQuests.length - 1]
+
+		const activeList = []
+
+		if (activeWeekly) {
+			activeList.push({
+				...activeWeekly,
+				progress: Math.min(weekTotal, activeWeekly.goal),
+				done: weekTotal >= activeWeekly.goal
+			})
+		}
+
+		if (activeMonthly) {
+			activeList.push({
+				...activeMonthly,
+				progress: Math.min(monthTotal, activeMonthly.goal),
+				done: monthTotal >= activeMonthly.goal
+			})
+		}
+
+		const syncQuest = questsData.familyQuests.find(
+			q => q.type === 'family_all_goal'
+		)
+		if (syncQuest) {
+			let allDone = true
+			families.forEach(fam => {
+				fam.members
+					.filter(m => m.status === 'accepted')
+					.forEach(m => {
+						if (m.progress < 100) allDone = false
+					})
+			})
+			activeList.push({
+				...syncQuest,
+				progress: allDone ? 1 : 0,
+				done: allDone
+			})
+		}
+
+		familyQuests = activeList
 	}
 
 	return { personal: personalQuest, family: familyQuests }
