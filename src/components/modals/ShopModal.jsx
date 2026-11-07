@@ -85,6 +85,7 @@ export default function ShopModal({
 				>
 					×
 				</button>
+
 				<div
 					style={{
 						display: 'flex',
@@ -97,9 +98,11 @@ export default function ShopModal({
 					<div>
 						<h2 style={{ margin: 0 }}>Магазин</h2>
 					</div>
+					{/* ДОБАВИЛИ marginRight: 30px, ЧТОБЫ НЕ НАЕЗЖАТЬ НА КРЕСТИК */}
 					<div
 						style={{
 							marginLeft: 'auto',
+							marginRight: '30px',
 							background: '#fff0bf',
 							padding: '8px 12px',
 							borderRadius: '12px',
@@ -113,6 +116,7 @@ export default function ShopModal({
 						<span>✦</span> {diamonds}
 					</div>
 				</div>
+
 				<div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
 					<button
 						onClick={() => setActiveTab('themes')}
@@ -133,6 +137,7 @@ export default function ShopModal({
 						Кейсы
 					</button>
 				</div>
+
 				{activeTab === 'themes' && (
 					<div className="shop-grid">
 						{availableThemes.length === 0 ? (
@@ -160,6 +165,7 @@ export default function ShopModal({
 						)}
 					</div>
 				)}
+
 				{activeTab === 'style' && (
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
@@ -236,6 +242,7 @@ export default function ShopModal({
 						</div>
 					</div>
 				)}
+
 				{activeTab === 'cases' && (
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
@@ -243,46 +250,16 @@ export default function ShopModal({
 						{shopData.cases.map(c => {
 							const price = getPrice(c)
 							return (
+								// ИСПОЛЬЗУЕМ КЛАСС shop-case-item ВМЕСТО ИНЛАЙН-СТИЛЕЙ
 								<div
 									key={c.id}
-									style={{
-										display: 'flex',
-										alignItems: 'center',
-										gap: '12px',
-										background: '#f8fafc',
-										padding: '16px',
-										borderRadius: '16px',
-										border: `1px solid ${c.color}40`
-									}}
+									className="shop-case-item"
+									style={{ border: `1px solid ${c.color}40` }}
 								>
-									<div
-										style={{
-											fontSize: '32px',
-											background: '#fff',
-											width: '60px',
-											height: '60px',
-											display: 'flex',
-											alignItems: 'center',
-											justifyContent: 'center',
-											borderRadius: '16px',
-											boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-										}}
-									>
-										{c.icon}
-									</div>
+									<div className="shop-case-icon">{c.icon}</div>
 									<div style={{ flex: 1 }}>
-										<div
-											style={{
-												fontWeight: '800',
-												color: '#173f70',
-												fontSize: '16px'
-											}}
-										>
-											{c.title}
-										</div>
-										<div style={{ fontSize: '12px', color: '#71869d' }}>
-											{c.desc}
-										</div>
+										<div className="shop-case-title">{c.title}</div>
+										<div className="shop-case-desc">{c.desc}</div>
 									</div>
 									<button
 										onClick={() => openCase(c)}
@@ -305,6 +282,7 @@ export default function ShopModal({
 						})}
 					</div>
 				)}
+
 				{spinning && (
 					<div
 						style={{
@@ -334,6 +312,7 @@ export default function ShopModal({
 						</p>
 					</div>
 				)}
+
 				{wonPrize && !spinning && (
 					<div
 						style={{

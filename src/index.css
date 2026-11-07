@@ -1515,3 +1515,56 @@ body {
 .dark-theme .profile-modal h3 {
 	color: #f8fafc;
 }
+/* ==========================================
+   КАРТОЧКИ КЕЙСОВ В МАГАЗИНЕ
+   ========================================== */
+.shop-case-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.shop-case-icon {
+  font-size: 32px;
+  background: #fff;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.shop-case-title {
+  font-weight: 800;
+  color: #173f70;
+  font-size: 16px;
+}
+
+.shop-case-desc {
+  font-size: 12px;
+  color: #71869d;
+}
+
+/* ТЕМНАЯ ТЕМА ДЛЯ КЕЙСОВ */
+.dark-theme .shop-case-item {
+  background: #1e293b; /* Темный фон */
+  border-color: rgba(255,255,255,0.1) !important; /* Делаем рамку едва заметной */
+}
+
+.dark-theme .shop-case-icon {
+  background: #0f172a; /* Темный фон иконки */
+}
+
+.dark-theme .shop-case-title {
+  color: #f8fafc; /* Белый текст */
+}
+
+.dark-theme .shop-case-desc {
+  color: #94a3b8; /* Серый текст */
+}
