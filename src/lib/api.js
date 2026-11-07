@@ -260,6 +260,9 @@ export async function buyItemApi(
 	price,
 	skipDuplicateCheck = false
 ) {
+	return callUserApi('buy_item', { itemId, price })
+}
+{
 	if (!supabase) return { error: 'Нет связи с базой' }
 
 	// Если это прямой магазин — проверяем дубликат

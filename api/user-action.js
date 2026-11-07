@@ -10,10 +10,9 @@ export default async function handler(req, res) {
 	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 	if (!botToken || !supabaseUrl || !supabaseKey || !initData) {
-		return res.status(500).json({ error: 'Server configuration error' })
+		return res.status(500).json({ error: 'Ошибка конфигурации сервера' })
 	}
 
-	// 1. ПРОВЕРКА ПОДПИСИ TELEGRAM
 	const params = new URLSearchParams(initData)
 	const hash = params.get('hash')
 	params.delete('hash')
@@ -38,7 +37,6 @@ export default async function handler(req, res) {
 	const supabase = createClient(supabaseUrl, supabaseKey)
 
 	try {
-		// 2. ВЫПОЛНЕНИЕ ДЕЙСТВИЯ
 		if (action === 'delete_log') {
 			const { error } = await supabase
 				.from('water_logs')
@@ -60,15 +58,48 @@ export default async function handler(req, res) {
 		}
 
 		if (action === 'update_profile') {
-			const { error } = await supabase
-				.from('users')
-				.update({
-					first_name: payload.name,
-					weight_kg: payload.weight,
-					water_goal_ml: payload.weight * 30
-				})
-				.eq('id', user.id)
+			const { error } = await supabase.from('users').upsert({
+				id: user.id,
+				first_name: payload.name,
+				weight_kg: payload.weight,
+				water_goal_ml: payload.weight * 30
+			})
 			if (error) throw error
+			return res.status(200).json({ ok: true })
+		}
+
+		// НОВОЕ ДЕЙСТВИЕ: БЕЗОПАСНАЯ ПОКУПКА
+		if (action === 'buy_item') {
+			const { itemId, price } = payload
+
+			const { data: profile } = await supabase
+				.from('users')
+				.select('diamonds')
+				.eq('id', user.id)
+				.single()
+			if (!profile) throw new Error('Профиль не найден')
+			if (profile.diamonds < price) throw new Error('Недостаточно алмазов!')
+
+			// Списываем алмазы
+			if (price > 0) {
+				const { error: deductError } = await supabase
+					.from('users')
+					.update({ diamonds: profile.diamonds - price })
+					.eq('id', user.id)
+				if (deductError) throw new Error('Ошибка списания алмазов')
+			}
+
+			// Добавляем в инвентарь
+			const { error: insertError } = await supabase.from('inventory').insert({
+				user_id: user.id,
+				item_id: itemId
+			})
+
+			// Если предмет уже есть (например, выпал из кейса), игнорируем ошибку
+			if (insertError && insertError.code !== '23505') {
+				throw new Error('Ошибка добавления в инвентарь')
+			}
+
 			return res.status(200).json({ ok: true })
 		}
 
