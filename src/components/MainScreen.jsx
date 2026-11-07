@@ -31,7 +31,7 @@ import QuestsTab from './tabs/QuestsTab'
 import RewardModal from './modals/RewardModal'
 import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
-import ShopModal from './modals/ShopModal' // ИМПОРТ МАГАЗИНА
+import ShopModal from './modals/ShopModal'
 
 const todayKey = () => {
 	const d = new Date()
@@ -54,9 +54,20 @@ function MainScreen() {
 	const [showCustom, setShowCustom] = useState(false)
 	const [settings, setSettings] = useState(false)
 	const [activeInfo, setActiveInfo] = useState(null)
-	const [showShop, setShowShop] = useState(false) // Стейт магазина
+	const [showShop, setShowShop] = useState(false)
 	const [isDark, setIsDark] = useState(
 		() => localStorage.getItem('family-water-theme') === 'dark'
+	)
+
+	// СТЕЙТЫ ДЛЯ ПРИМЕНЕННЫХ ВЕЩЕЙ
+	const [appliedTheme, setAppliedTheme] = useState(
+		() => localStorage.getItem('applied_theme') || ''
+	)
+	const [appliedTitle, setAppliedTitle] = useState(
+		() => localStorage.getItem('applied_title') || ''
+	)
+	const [appliedFrame, setAppliedFrame] = useState(
+		() => localStorage.getItem('applied_frame') || ''
 	)
 
 	const [showReward, setShowReward] = useState(false)
@@ -73,6 +84,29 @@ function MainScreen() {
 	const touchEnd = useRef({ x: 0, y: 0 })
 	const minSwipeDistance = 60
 	const tabsOrder = ['today', 'diary', 'analytics', 'family', 'quests']
+
+	// ФУНКЦИЯ ПРИМЕНЕНИЯ ПРЕДМЕТА
+	const applyItem = item => {
+		if (item.id.startsWith('theme_')) {
+			setAppliedTheme(item.cssClass)
+			localStorage.setItem('applied_theme', item.cssClass)
+		} else if (item.id.startsWith('title_')) {
+			setAppliedTitle(item)
+			localStorage.setItem('applied_title', JSON.stringify(item))
+		} else if (item.id.startsWith('frame_')) {
+			setAppliedFrame(item.cssClass)
+			localStorage.setItem('applied_frame', item.cssClass)
+		}
+	}
+
+	useEffect(() => {
+		const savedTitle = localStorage.getItem('applied_title')
+		if (savedTitle) {
+			try {
+				setAppliedTitle(JSON.parse(savedTitle))
+			} catch (e) {}
+		}
+	}, [])
 
 	useEffect(() => {
 		const handleToast = e => {
@@ -544,7 +578,7 @@ function MainScreen() {
 	}
 
 	return (
-		<main className={`water-app ${isDark ? 'dark-theme' : ''}`}>
+		<main className={`water-app ${isDark ? 'dark-theme' : ''} ${appliedTheme}`}>
 			<div className="toast-container">
 				{toasts.map(t => (
 					<div
@@ -560,6 +594,11 @@ function MainScreen() {
 				<div className="header-text">
 					<p className="eyebrow">СЕМЕЙНЫЙ ТРЕКЕР</p>
 					<h1>Ассаляму алейкум, {profile?.first_name}</h1>
+					{appliedTitle && (
+						<div className={`user-title ${appliedTitle.cssClass}`}>
+							{appliedTitle.icon} {appliedTitle.title}
+						</div>
+					)}
 				</div>
 				<button
 					className="icon-button"
@@ -571,7 +610,6 @@ function MainScreen() {
 			</header>
 
 			<section className="compact-stats">
-				{/* ТЕПЕРЬ КЛИК ПО АЛМАЗАМ ОТКРЫВАЕТ МАГАЗИН */}
 				<div
 					ref={diamondTargetRef}
 					className={diamondPop ? 'pop-anim' : ''}
@@ -637,6 +675,7 @@ function MainScreen() {
 						handleKickMember={handleKickMember}
 						handleRenameFamily={handleRenameFamily}
 						familyLoading={familyLoading}
+						appliedFrame={appliedFrame} // ПЕРЕДАЕМ РАМКУ В СЕМЬЮ
 					/>
 				)}
 				{tab === 'quests' && (
@@ -704,11 +743,12 @@ function MainScreen() {
 				total={total}
 			/>
 
-			{/* ПОДКЛЮЧАЕМ МАГАЗИН */}
+			{/* ПЕРЕДАЕМ ФУНКЦИЮ ПРИМЕНЕНИЯ */}
 			<ShopModal
 				show={showShop}
 				onClose={() => setShowShop(false)}
 				diamonds={profile?.diamonds || 0}
+				onApplyItem={applyItem}
 			/>
 		</main>
 	)

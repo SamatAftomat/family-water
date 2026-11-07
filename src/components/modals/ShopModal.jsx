@@ -1,120 +1,21 @@
 import { useState } from 'react'
 import { showToast } from '../../lib/api'
+import shopData from '../../data/shop.json'
 
-const CASES = [
-	{
-		id: 'case_fons',
-		title: 'Кейс «Фоны»',
-		icon: '📦',
-		price: 20,
-		color: '#74b9ff',
-		desc: 'Шанс выбить редкий фон'
-	},
-	{
-		id: 'case_titles',
-		title: 'Кейс «Титулы»',
-		icon: '🏷️',
-		price: 30,
-		color: '#a29bfe',
-		desc: 'От обычных до эпических титулов'
-	},
-	{
-		id: 'case_sounds',
-		title: 'Кейс «Звуки»',
-		icon: '🔊',
-		price: 15,
-		color: '#55efc4',
-		desc: 'Приятные звуки для воды'
-	},
-	{
-		id: 'case_mega',
-		title: 'Мега-Кейс',
-		icon: '💎',
-		price: 100,
-		color: '#fdcb6e',
-		desc: '100% шанс на крутую вещь!'
-	}
-]
-
-const PRIZES = [
-	{ name: '5 алмазов', icon: '✦', rarity: 'Обычный', color: '#71869d' },
-	{ name: '10 алмазов', icon: '✦', rarity: 'Обычный', color: '#71869d' },
-	{ name: 'Золотая рамка', icon: '🖼️', rarity: 'Редкий', color: '#1886ad' },
-	{ name: 'Свечение имени', icon: '✨', rarity: 'Редкий', color: '#1886ad' },
-	{
-		name: 'Космический фон',
-		icon: '🌌',
-		rarity: 'Эпический',
-		color: '#a29bfe'
-	},
-	{ name: 'Звук «Дзынь»', icon: '🔔', rarity: 'Обычный', color: '#71869d' },
-	{
-		name: 'Титул «Аквамен»',
-		icon: '🔱',
-		rarity: 'Легендарный',
-		color: '#fdcb6e'
-	}
-]
-
-export default function ShopModal({ show, onClose, diamonds }) {
-	const [activeTab, setActiveTab] = useState('items')
+export default function ShopModal({ show, onClose, diamonds, onApplyItem }) {
+	const [activeTab, setActiveTab] = useState('themes')
 	const [spinning, setSpinning] = useState(false)
 	const [wonPrize, setWonPrize] = useState(null)
 	const [openedCase, setOpenedCase] = useState(null)
 
 	if (!show) return null
 
-	const items = [
-		{
-			id: 1,
-			title: 'Космическая тема',
-			icon: '🌌',
-			price: 50,
-			desc: 'Темный фон со звездами'
-		},
-		{
-			id: 2,
-			title: 'Океанская тема',
-			icon: '🌊',
-			price: 40,
-			desc: 'Морской бриз'
-		},
-		{
-			id: 3,
-			title: 'Золотая рамка',
-			icon: '🖼️',
-			price: 30,
-			desc: 'Выделись в семье'
-		},
-		{
-			id: 4,
-			title: 'Свечение имени',
-			icon: '✨',
-			price: 20,
-			desc: 'Твое имя будет сиять'
-		},
-		{
-			id: 5,
-			title: 'Заморозка стрика',
-			icon: '🧊',
-			price: 25,
-			desc: 'Спасает огонек'
-		},
-		{
-			id: 6,
-			title: 'Звук «Дзынь»',
-			icon: '🔔',
-			price: 15,
-			desc: 'Приятный звук при нажатии'
-		},
-		{
-			id: 7,
-			title: 'Титул «Аквамен»',
-			icon: '🔱',
-			price: 35,
-			desc: 'Прямая покупка титула'
-		}
-	]
+	// Функция покупки (пока бесплатно)
+	const handleBuy = item => {
+		// Если цена 0, то просто применяем
+		onApplyItem(item)
+		showToast(`Куплено: ${item.title}`, 'success')
+	}
 
 	const openCase = c => {
 		if (spinning) return
@@ -122,12 +23,19 @@ export default function ShopModal({ show, onClose, diamonds }) {
 		setWonPrize(null)
 		setOpenedCase(c)
 
-		// Имитация рулетки (2 секунды)
 		setTimeout(() => {
-			const randomPrize = PRIZES[Math.floor(Math.random() * PRIZES.length)]
-			setWonPrize(randomPrize)
+			// Выбираем случайный ID из пула кейса
+			const randomId = c.pool[Math.floor(Math.random() * c.pool.length)]
+
+			// Ищем этот предмет во всех категориях
+			let foundItem =
+				shopData.themes.find(t => t.id === randomId) ||
+				shopData.titles.find(t => t.id === randomId) ||
+				shopData.frames.find(f => f.id === randomId)
+
+			setWonPrize(foundItem)
+			onApplyItem(foundItem) // СРАЗУ ПРИМЕНЯЕМ
 			setSpinning(false)
-			showToast(`Вы выбили: ${randomPrize.name}!`, 'success')
 		}, 2000)
 	}
 
@@ -159,7 +67,7 @@ export default function ShopModal({ show, onClose, diamonds }) {
 					<div>
 						<h2 style={{ margin: 0 }}>Магазин</h2>
 						<p style={{ margin: 0, fontSize: '13px', color: '#71869d' }}>
-							Трать алмазы с умом
+							Всё бесплатно (Тест)
 						</p>
 					</div>
 					<div
@@ -182,43 +90,29 @@ export default function ShopModal({ show, onClose, diamonds }) {
 				{/* Табы */}
 				<div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
 					<button
-						onClick={() => setActiveTab('items')}
-						style={{
-							flex: 1,
-							padding: '10px',
-							borderRadius: '12px',
-							border: 'none',
-							fontWeight: 'bold',
-							background: activeTab === 'items' ? '#173f70' : '#eef5fb',
-							color: activeTab === 'items' ? '#fff' : '#173f70',
-							cursor: 'pointer',
-							transition: 'all 0.2s'
-						}}
+						onClick={() => setActiveTab('themes')}
+						className={`shop-tab ${activeTab === 'themes' ? 'active' : ''}`}
 					>
-						Косметика
+						Фоны
+					</button>
+					<button
+						onClick={() => setActiveTab('style')}
+						className={`shop-tab ${activeTab === 'style' ? 'active' : ''}`}
+					>
+						Стиль
 					</button>
 					<button
 						onClick={() => setActiveTab('cases')}
-						style={{
-							flex: 1,
-							padding: '10px',
-							borderRadius: '12px',
-							border: 'none',
-							fontWeight: 'bold',
-							background: activeTab === 'cases' ? '#173f70' : '#eef5fb',
-							color: activeTab === 'cases' ? '#fff' : '#173f70',
-							cursor: 'pointer',
-							transition: 'all 0.2s'
-						}}
+						className={`shop-tab ${activeTab === 'cases' ? 'active' : ''}`}
 					>
-						🎁 Кейсы
+						Кейсы
 					</button>
 				</div>
 
-				{/* КОНТЕНТ КОСМЕТИКИ */}
-				{activeTab === 'items' && (
+				{/* КОНТЕНТ ФОНОВ */}
+				{activeTab === 'themes' && (
 					<div className="shop-grid">
-						{items.map(item => (
+						{shopData.themes.map(item => (
 							<div
 								key={item.id}
 								className="shop-item"
@@ -230,12 +124,80 @@ export default function ShopModal({ show, onClose, diamonds }) {
 								</div>
 								<button
 									className="shop-buy-btn"
-									onClick={() => showToast('Покупки появятся скоро!', 'info')}
+									onClick={() => handleBuy(item)}
 								>
-									{item.price} ✦
+									Купить
 								</button>
 							</div>
 						))}
+					</div>
+				)}
+
+				{/* КОНТЕНТ СТИЛЯ (Титулы и Рамки) */}
+				{activeTab === 'style' && (
+					<div
+						style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+					>
+						<div>
+							<h3
+								style={{
+									fontSize: '14px',
+									color: '#71869d',
+									marginBottom: '8px'
+								}}
+							>
+								Титулы
+							</h3>
+							<div className="shop-grid">
+								{shopData.titles.map(item => (
+									<div
+										key={item.id}
+										className="shop-item"
+									>
+										<div className="shop-icon">{item.icon}</div>
+										<div className="shop-info">
+											<div className="shop-title">{item.title}</div>
+										</div>
+										<button
+											className="shop-buy-btn"
+											onClick={() => handleBuy(item)}
+										>
+											Купить
+										</button>
+									</div>
+								))}
+							</div>
+						</div>
+						<div>
+							<h3
+								style={{
+									fontSize: '14px',
+									color: '#71869d',
+									marginBottom: '8px'
+								}}
+							>
+								Рамки аватара
+							</h3>
+							<div className="shop-grid">
+								{shopData.frames.map(item => (
+									<div
+										key={item.id}
+										className="shop-item"
+									>
+										<div className="shop-icon">{item.icon}</div>
+										<div className="shop-info">
+											<div className="shop-title">{item.title}</div>
+										</div>
+										<button
+											className="shop-buy-btn"
+											onClick={() => handleBuy(item)}
+										>
+											Купить
+										</button>
+									</div>
+								))}
+							</div>
+						</div>
 					</div>
 				)}
 
@@ -244,7 +206,7 @@ export default function ShopModal({ show, onClose, diamonds }) {
 					<div
 						style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
 					>
-						{CASES.map(c => (
+						{shopData.cases.map(c => (
 							<div
 								key={c.id}
 								style={{
@@ -282,13 +244,7 @@ export default function ShopModal({ show, onClose, diamonds }) {
 									>
 										{c.title}
 									</div>
-									<div
-										style={{
-											fontSize: '12px',
-											color: '#71869d',
-											marginBottom: '4px'
-										}}
-									>
+									<div style={{ fontSize: '12px', color: '#71869d' }}>
 										{c.desc}
 									</div>
 								</div>
@@ -305,7 +261,7 @@ export default function ShopModal({ show, onClose, diamonds }) {
 										flexShrink: 0
 									}}
 								>
-									{c.price} ✦
+									Открыть
 								</button>
 							</div>
 						))}
@@ -362,13 +318,18 @@ export default function ShopModal({ show, onClose, diamonds }) {
 						<div style={{ fontSize: '60px', marginBottom: '10px' }}>
 							{wonPrize.icon}
 						</div>
-						<h3 style={{ margin: '0 0 8px', color: wonPrize.color }}>
-							{wonPrize.name}
+						<h3 style={{ margin: '0 0 8px', color: '#173f70' }}>
+							{wonPrize.title}
 						</h3>
 						<p
-							style={{ margin: '0 0 20px', fontSize: '14px', color: '#71869d' }}
+							style={{
+								margin: '0 0 20px',
+								fontSize: '14px',
+								color: '#0ba360',
+								fontWeight: 'bold'
+							}}
 						>
-							Редкость: {wonPrize.rarity}
+							Уже применено!
 						</p>
 						<button
 							className="primary-action"
