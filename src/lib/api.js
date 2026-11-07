@@ -69,7 +69,7 @@ export async function getLast7DaysTotal(userId) {
 }
 
 // ==========================================
-// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ВОДА И ПРОФИЛЬ)
+// ДЕЙСТВИЯ ПОЛЬЗОВАТЕЛЯ (ЧЕРЕЗ API)
 // ==========================================
 
 async function callUserApi(action, payload = {}) {
@@ -117,6 +117,10 @@ export async function updateProfileDb(name, weight) {
 	return callUserApi('update_profile', { name, weight })
 }
 
+export async function updateAppearanceDb(activeTitleId, activeFrameCss) {
+	return callUserApi('update_appearance', { activeTitleId, activeFrameCss })
+}
+
 // ==========================================
 // СЕМЕЙНЫЕ ГРУППЫ
 // ==========================================
@@ -144,7 +148,9 @@ export async function getMyFamilies(userId, dateStr) {
 		: []
 	const { data: profiles } = await supabase
 		.from('users')
-		.select('*')
+		.select(
+			'id, first_name, water_goal_ml, active_title_id, active_frame_css, streak_days'
+		)
 		.in('id', allUserIds)
 
 	const startOfDay = new Date(`${dateStr}T00:00:00+03:00`)
@@ -172,7 +178,10 @@ export async function getMyFamilies(userId, dateStr) {
 					progress: Math.min(
 						Math.round((drank / (prof?.water_goal_ml || 2100)) * 100),
 						100
-					)
+					),
+					active_title_id: prof?.active_title_id || 'title_default',
+					active_frame_css: prof?.active_frame_css || '',
+					streak_days: prof?.streak_days || 0
 				}
 			})
 		return { ...fam, members }
@@ -261,6 +270,32 @@ export async function buyItemApi(
 	skipDuplicateCheck = false
 ) {
 	return callUserApi('buy_item', { itemId, price })
+}
+
+// ==========================================
+// ДОСТИЖЕНИЯ
+// ==========================================
+
+export async function getClaimedAchievements(userId) {
+	if (!supabase) return []
+	const { data } = await supabase
+		.from('user_achievements')
+		.select('ach_id')
+		.eq('user_id', userId)
+	return data ? data.map(a => a.ach_id) : []
+}
+
+export async function claimAchievementApi(userId, achId, reward) {
+	return callUserApi('claim_achievement', { achId, reward })
+}
+
+export async function getUserAchievements(userId) {
+	if (!supabase) return []
+	const { data } = await supabase
+		.from('user_achievements')
+		.select('ach_id')
+		.eq('user_id', userId)
+	return data ? data.map(a => a.ach_id) : []
 }
 
 // ==========================================
@@ -430,100 +465,4 @@ export async function getQuestProgress(userId, today, families) {
 	}
 
 	return { personal: personalQuest, family: familyQuests }
-}
-// ==========================================
-// ДОСТИЖЕНИЯ (АЧИВКИ)
-// ==========================================
-
-export async function getClaimedAchievements(userId) {
-	if (!supabase) return []
-	const { data } = await supabase
-		.from('user_achievements')
-		.select('ach_id')
-		.eq('user_id', userId)
-	return data ? data.map(a => a.ach_id) : []
-}
-
-export async function claimAchievementApi(userId, achId, reward) {
-	return callUserApi('claim_achievement', { achId, reward })
-}
-// Обновляем getMyFamilies, чтобы тянуть титулы и стрики
-export async function getMyFamilies(userId, dateStr) {
-	if (!supabase) return []
-	const { data: myMemberships } = await supabase
-		.from('family_members')
-		.select('family_id')
-		.eq('user_id', userId)
-		.eq('status', 'accepted')
-	if (!myMemberships || myMemberships.length === 0) return []
-	const familyIds = myMemberships.map(m => m.family_id)
-
-	const { data: families } = await supabase
-		.from('families')
-		.select('*')
-		.in('id', familyIds)
-	const { data: allMembers } = await supabase
-		.from('family_members')
-		.select('*')
-		.in('family_id', familyIds)
-	const allUserIds = allMembers
-		? [...new Set(allMembers.map(m => m.user_id))]
-		: []
-
-	// ДОБАВИЛИ active_title_id, active_frame_css, streak_days
-	const { data: profiles } = await supabase
-		.from('users')
-		.select(
-			'id, first_name, water_goal_ml, active_title_id, active_frame_css, streak_days'
-		)
-		.in('id', allUserIds)
-
-	const startOfDay = new Date(`${dateStr}T00:00:00+03:00`)
-	const endOfDay = new Date(`${dateStr}T23:59:59.999+03:00`)
-	const { data: logs } = await supabase
-		.from('water_logs')
-		.select('user_id, amount_ml')
-		.in('user_id', allUserIds)
-		.gte('logged_at', startOfDay.toISOString())
-		.lte('logged_at', endOfDay.toISOString())
-
-	return (families || []).map(fam => {
-		const members = (allMembers || [])
-			.filter(m => m.family_id === fam.id)
-			.map(m => {
-				const prof = (profiles || []).find(p => p.id === m.user_id)
-				const drank = (logs || [])
-					.filter(l => l.user_id === m.user_id)
-					.reduce((sum, l) => sum + l.amount_ml, 0)
-				return {
-					...m,
-					first_name: prof?.first_name || 'Пользователь',
-					drank_today: drank,
-					water_goal_ml: prof?.water_goal_ml || 2100,
-					progress: Math.min(
-						Math.round((drank / (prof?.water_goal_ml || 2100)) * 100),
-						100
-					),
-					active_title_id: prof?.active_title_id || 'title_default',
-					active_frame_css: prof?.active_frame_css || '',
-					streak_days: prof?.streak_days || 0
-				}
-			})
-		return { ...fam, members }
-	})
-}
-
-// НОВАЯ: Сохранение стилей
-export async function updateAppearanceDb(activeTitleId, activeFrameCss) {
-	return callUserApi('update_appearance', { activeTitleId, activeFrameCss })
-}
-
-// НОВАЯ: Получить достижения конкретного пользователя (для профиля)
-export async function getUserAchievements(userId) {
-	if (!supabase) return []
-	const { data } = await supabase
-		.from('user_achievements')
-		.select('ach_id')
-		.eq('user_id', userId)
-	return data ? data.map(a => a.ach_id) : []
 }
