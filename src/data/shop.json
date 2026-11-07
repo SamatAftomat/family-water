@@ -13,7 +13,7 @@
 			"id": "theme_space",
 			"title": "Космос",
 			"icon": "🌌",
-			"price": 200,
+			"price": 70,
 			"desc": "Темный фон со звездами",
 			"cssClass": "theme-space",
 			"themeMode": "dark"
@@ -22,7 +22,7 @@
 			"id": "theme_ocean",
 			"title": "Океан",
 			"icon": "🌊",
-			"price": 150,
+			"price": 75,
 			"desc": "Морской бриз",
 			"cssClass": "theme-ocean",
 			"themeMode": "light"
@@ -31,7 +31,7 @@
 			"id": "theme_forest",
 			"title": "Лес",
 			"icon": "🌲",
-			"price": 100,
+			"price": 80,
 			"desc": "Природа и зелень",
 			"cssClass": "theme-forest",
 			"themeMode": "light"
@@ -40,7 +40,7 @@
 			"id": "theme_neon",
 			"title": "Неон",
 			"icon": "👾",
-			"price": 250,
+			"price": 70,
 			"desc": "Киберпанк стиль",
 			"cssClass": "theme-neon",
 			"themeMode": "dark"
@@ -49,7 +49,7 @@
 			"id": "theme_sunset",
 			"title": "Закат",
 			"icon": "🌅",
-			"price": 120,
+			"price": 100,
 			"desc": "Теплые тона",
 			"cssClass": "theme-sunset",
 			"themeMode": "light"
@@ -58,7 +58,7 @@
 			"id": "theme_ice",
 			"title": "Лед",
 			"icon": "🧊",
-			"price": 180,
+			"price": 1,
 			"desc": "Холодный минимализм",
 			"cssClass": "theme-ice",
 			"themeMode": "light"
@@ -67,7 +67,7 @@
 			"id": "theme_matrix",
 			"title": "Матрица",
 			"icon": "🟩",
-			"price": 300,
+			"price": 1,
 			"desc": "Зеленый код",
 			"cssClass": "theme-matrix",
 			"themeMode": "dark"
@@ -86,7 +86,7 @@
 			"id": "title_aqua",
 			"title": "Аквамен",
 			"icon": "🔱",
-			"price": 50,
+			"price": 60,
 			"desc": "Повелитель воды",
 			"cssClass": "title-aqua"
 		},
@@ -126,7 +126,7 @@
 			"id": "title_legend",
 			"title": "Легенда",
 			"icon": "🌟",
-			"price": 500,
+			"price": 300,
 			"desc": "Максимальный статус",
 			"cssClass": "title-legend"
 		}
@@ -152,7 +152,7 @@
 			"id": "frame_neon",
 			"title": "Неоновая",
 			"icon": "💜",
-			"price": 125,
+			"price": 90,
 			"desc": "Светится в темноте",
 			"cssClass": "frame-neon"
 		},
@@ -160,7 +160,7 @@
 			"id": "frame_fire",
 			"title": "Огненная",
 			"icon": "🔥",
-			"price": 175,
+			"price": 95,
 			"desc": "Для горячих сердец",
 			"cssClass": "frame-fire"
 		},
@@ -168,7 +168,7 @@
 			"id": "frame_diamond",
 			"title": "Алмазная",
 			"icon": "💎",
-			"price": 300,
+			"price": 110,
 			"desc": "Кристальная чистота",
 			"cssClass": "frame-diamond"
 		},
@@ -176,7 +176,7 @@
 			"id": "frame_toxic",
 			"title": "Токсичная",
 			"icon": "☢️",
-			"price": 150,
+			"price": 120,
 			"desc": "Радиоактивный стиль",
 			"cssClass": "frame-toxic"
 		},
@@ -184,7 +184,7 @@
 			"id": "frame_rainbow",
 			"title": "Радужная",
 			"icon": "🌈",
-			"price": 400,
+			"price": 160,
 			"desc": "Цвета жизни",
 			"cssClass": "frame-rainbow"
 		}
@@ -211,7 +211,7 @@
 			"id": "case_title",
 			"title": "Кейс «Титулы»",
 			"icon": "🏷️",
-			"price": 75,
+			"price": 110,
 			"desc": "Случайный титул",
 			"color": "#a29bfe",
 			"pool": [
@@ -227,7 +227,7 @@
 			"id": "case_frame",
 			"title": "Кейс «Рамки»",
 			"icon": "🖼️",
-			"price": 80,
+			"price": 100,
 			"desc": "Случайная рамка",
 			"color": "#55efc4",
 			"pool": [
@@ -252,6 +252,35 @@
 				"title_legend",
 				"frame_rainbow",
 				"frame_diamond"
+			]
+		},
+		{
+			"id": "case_mix",
+			"title": "Микс-Кейс",
+			"icon": "🎰",
+			"price": 250,
+			"desc": "Всё в одном! Любой предмет из магазина",
+			"color": "#e056fd",
+			"pool": [
+				"theme_space",
+				"theme_ocean",
+				"theme_forest",
+				"theme_neon",
+				"theme_sunset",
+				"theme_ice",
+				"theme_matrix",
+				"title_aqua",
+				"title_master",
+				"title_lord",
+				"title_hydro",
+				"title_fire",
+				"title_legend",
+				"frame_gold",
+				"frame_neon",
+				"frame_fire",
+				"frame_diamond",
+				"frame_toxic",
+				"frame_rainbow"
 			]
 		}
 	]
