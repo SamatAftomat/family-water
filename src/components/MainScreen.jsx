@@ -48,7 +48,6 @@ const todayKey = () => {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// Вычисляем начало недели (понедельник) и месяца
 const getWeekStart = date => {
 	const d = new Date(date)
 	const day = d.getDay() || 7
@@ -226,7 +225,6 @@ function MainScreen() {
 		}
 	}
 
-	// ОБРАБОТЧИК ЗАБОРА КВЕСТА
 	const handleClaimQuest = async (questId, reward, claimDate) => {
 		const res = await claimQuestApi(questId, reward, claimDate)
 		if (res.error) {
@@ -240,6 +238,21 @@ function MainScreen() {
 				setCache('profile', p)
 				return p
 			})
+		}
+	}
+
+	// ФУНКЦИЯ ШЕРИНГА ПРОГРЕССА
+	const handleShareProgress = () => {
+		const text = `💧 Я уже выпил ${total} мл воды из ${goal} мл!\n🔥 Мой стрик: ${effectiveStreak} дней.\n\nПрисоединяйся к нашему семейному трекеру воды! 💪`
+		const tg = window.Telegram?.WebApp
+		if (tg && tg.openTelegramLink) {
+			tg.openTelegramLink(
+				`https://t.me/share/url?url=${encodeURIComponent(text)}`
+			)
+		} else {
+			navigator.clipboard
+				?.writeText(text)
+				.then(() => showToast('Текст скопирован!', 'success'))
 		}
 	}
 
@@ -370,7 +383,6 @@ function MainScreen() {
 						getMyInvites(userId)
 					])
 
-				// Забираем забранные квесты на сегодня
 				const claimedToday = await getClaimedQuests(userId, today)
 				const claimedWeek = await getClaimedQuests(userId, weekStart)
 				const claimedMonth = await getClaimedQuests(userId, monthStart)
@@ -860,6 +872,8 @@ function MainScreen() {
 						removeLog={removeLog}
 						goToTab={goToTab}
 						invites={invites}
+						onShareProgress={handleShareProgress}
+						streak={effectiveStreak}
 					/>
 				)}
 				{tab === 'diary' && (

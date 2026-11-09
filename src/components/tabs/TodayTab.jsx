@@ -13,7 +13,9 @@ export default function TodayTab({
 	setCustomAmount,
 	removeLog,
 	goToTab,
-	invites
+	invites,
+	onShareProgress,
+	streak
 }) {
 	return (
 		<>
@@ -79,8 +81,9 @@ export default function TodayTab({
 							r="50"
 							pathLength="100"
 						/>
+						{/* ДОБАВИЛИ КЛАСС ring-complete, ЕСЛИ НОРМА ВЫПОЛНЕНА */}
 						<circle
-							className="ring-value"
+							className={`ring-value ${progress >= 100 ? 'ring-complete' : ''}`}
 							cx="60"
 							cy="60"
 							r="50"
@@ -150,6 +153,28 @@ export default function TodayTab({
 						</button>
 					</div>
 				)}
+
+				{/* КНОПКА ПОДЕЛИТЬСЯ */}
+				<button
+					onClick={onShareProgress}
+					style={{
+						width: '100%',
+						marginTop: '12px',
+						padding: '12px',
+						background: 'transparent',
+						border: '1px solid rgba(255,255,255,0.4)',
+						borderRadius: '14px',
+						color: '#fff',
+						fontWeight: 'bold',
+						cursor: 'pointer',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						gap: '8px'
+					}}
+				>
+					<span>📤</span> Поделиться прогрессом
+				</button>
 			</section>
 
 			<section className="section-block">

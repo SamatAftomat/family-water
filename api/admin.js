@@ -15,36 +15,38 @@ export default async function handler(req, res) {
 		return res.status(500).json({ error: 'Ошибка конфигурации' })
 	}
 
-	const params = new URLSearchParams(initData)
-	const hash = params.get('hash')
-	params.delete('hash')
-	const dataCheckString = Array.from(params.entries())
-		.sort(([a], [b]) => a.localeCompare(b))
-		.map(([key, value]) => `${key}=${value}`)
-		.join('\n')
-	const secretKey = crypto
-		.createHmac('sha256', 'WebAppData')
-		.update(botToken)
-		.digest()
-	const calculatedHash = crypto
-		.createHmac('sha256', secretKey)
-		.update(dataCheckString)
-		.digest('hex')
-
-	if (calculatedHash !== hash)
-		return res.status(403).json({ error: 'Invalid initData' })
-
-	const user = JSON.parse(params.get('user'))
-
-	if (Number(user.id) !== ADMIN_ID) {
-		return res
-			.status(403)
-			.json({ error: 'Доступ запрещен. Вы не администратор.' })
-	}
-
-	const supabase = createClient(supabaseUrl, supabaseKey)
-
 	try {
+		const params = new URLSearchParams(initData)
+		const hash = params.get('hash')
+		params.delete('hash')
+		const dataCheckString = Array.from(params.entries())
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([key, value]) => `${key}=${value}`)
+			.join('\n')
+		const secretKey = crypto
+			.createHmac('sha256', 'WebAppData')
+			.update(botToken)
+			.digest()
+		const calculatedHash = crypto
+			.createHmac('sha256', secretKey)
+			.update(dataCheckString)
+			.digest('hex')
+
+		if (calculatedHash !== hash)
+			return res.status(403).json({ error: 'Invalid initData' })
+
+		const user = JSON.parse(params.get('user'))
+
+		// ЖЕСТКАЯ ПРОВЕРКА НА АДМИНА
+		if (Number(user.id) !== ADMIN_ID) {
+			console.warn(`Попытка взлома админки от ID: ${user.id}`)
+			return res
+				.status(403)
+				.json({ error: 'Доступ запрещен. Вы не администратор.' })
+		}
+
+		const supabase = createClient(supabaseUrl, supabaseKey)
+
 		if (action === 'get_users') {
 			const { data: users } = await supabase
 				.from('users')
@@ -108,24 +110,17 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// ЗАБРАТЬ ПРЕДМЕТ
 		if (action === 'remove_item') {
-			const { error } = await supabase
+			await supabase
 				.from('inventory')
 				.delete()
 				.eq('user_id', payload.targetId)
 				.eq('item_id', payload.itemId)
-			if (error) throw error
 			return res.status(200).json({ ok: true })
 		}
 
-		// ОЧИСТИТЬ ИНВЕНТАРЬ
 		if (action === 'clear_inventory') {
-			const { error } = await supabase
-				.from('inventory')
-				.delete()
-				.eq('user_id', payload.targetId)
-			if (error) throw error
+			await supabase.from('inventory').delete().eq('user_id', payload.targetId)
 			return res.status(200).json({ ok: true })
 		}
 
