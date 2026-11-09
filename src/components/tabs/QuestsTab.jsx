@@ -3,10 +3,12 @@ import achievementsData from '../../data/achievements.json'
 
 export default function QuestsTab({
 	quests,
-	handleClaimQuest,
 	achievements = [],
 	handleClaimAch,
-	userStats = {}
+	userStats = {},
+	claimedQuests = [],
+	handleClaimQuest,
+	questClaimDates
 }) {
 	const [activeTab, setActiveTab] = useState('quests')
 
@@ -80,6 +82,7 @@ export default function QuestsTab({
 								style={{
 									display: 'flex',
 									justifyContent: 'space-between',
+									alignItems: 'center',
 									fontSize: '12px',
 									color: '#71869d',
 									marginTop: '6px'
@@ -89,9 +92,32 @@ export default function QuestsTab({
 									{quests.personal.progress} / {quests.personal.goal}{' '}
 									{quests.personal.unit}
 								</span>
-								{quests.personal.done && (
+								{quests.personal.done &&
+									!claimedQuests.includes(quests.personal.id) && (
+										<button
+											onClick={() =>
+												handleClaimQuest(
+													quests.personal.id,
+													quests.personal.reward,
+													questClaimDates.personal
+												)
+											}
+											style={{
+												background: '#0ba360',
+												color: '#fff',
+												border: 'none',
+												padding: '6px 14px',
+												borderRadius: '8px',
+												fontWeight: 'bold',
+												cursor: 'pointer'
+											}}
+										>
+											Забрать
+										</button>
+									)}
+								{claimedQuests.includes(quests.personal.id) && (
 									<span style={{ color: '#0ba360', fontWeight: 'bold' }}>
-										Выполнено!
+										✓ Получено
 									</span>
 								)}
 							</div>
@@ -116,65 +142,94 @@ export default function QuestsTab({
 									gap: '12px'
 								}}
 							>
-								{quests.family.map(q => (
-									<div
-										key={q.id}
-										className="quest-card"
-										style={{ border: '2px solid #fdcb6e' }}
-									>
+								{quests.family.map(q => {
+									const isClaimed = claimedQuests.includes(q.id)
+									const claimDate =
+										q.period === 'week'
+											? questClaimDates.week
+											: questClaimDates.month
+
+									return (
 										<div
-											style={{
-												display: 'flex',
-												justifyContent: 'space-between',
-												alignItems: 'center',
-												marginBottom: '12px'
-											}}
+											key={q.id}
+											className="quest-card"
+											style={{ border: '2px solid #fdcb6e' }}
 										>
-											<div>
-												<div
-													className="quest-title"
-													style={{ color: '#c49b00' }}
-												>
-													{q.icon} {q.title}
-												</div>
-												<div className="quest-desc">{q.description}</div>
-											</div>
 											<div
-												className="quest-reward"
-												style={{ background: '#fff0bf', color: '#c49b00' }}
-											>
-												+{q.reward} ✦
-											</div>
-										</div>
-										<div className="quest-progress-bg">
-											<div
-												className="quest-progress-fill"
 												style={{
-													width: `${(q.progress / q.goal) * 100}%`,
-													background: q.done ? '#0ba360' : '#fdcb6e'
+													display: 'flex',
+													justifyContent: 'space-between',
+													alignItems: 'center',
+													marginBottom: '12px'
 												}}
-											/>
-										</div>
-										<div
-											style={{
-												display: 'flex',
-												justifyContent: 'space-between',
-												fontSize: '12px',
-												color: '#71869d',
-												marginTop: '6px'
-											}}
-										>
-											<span>
-												{formatVolume(q.progress)} / {formatVolume(q.goal)}
-											</span>
-											{q.done && (
-												<span style={{ color: '#0ba360', fontWeight: 'bold' }}>
-													Выполнено!
+											>
+												<div>
+													<div
+														className="quest-title"
+														style={{ color: '#c49b00' }}
+													>
+														{q.icon} {q.title}
+													</div>
+													<div className="quest-desc">{q.description}</div>
+												</div>
+												<div
+													className="quest-reward"
+													style={{ background: '#fff0bf', color: '#c49b00' }}
+												>
+													+{q.reward} ✦
+												</div>
+											</div>
+											<div className="quest-progress-bg">
+												<div
+													className="quest-progress-fill"
+													style={{
+														width: `${(q.progress / q.goal) * 100}%`,
+														background: q.done ? '#0ba360' : '#fdcb6e'
+													}}
+												/>
+											</div>
+											<div
+												style={{
+													display: 'flex',
+													justifyContent: 'space-between',
+													alignItems: 'center',
+													fontSize: '12px',
+													color: '#71869d',
+													marginTop: '6px'
+												}}
+											>
+												<span>
+													{formatVolume(q.progress)} / {formatVolume(q.goal)}
 												</span>
-											)}
+												{q.done && !isClaimed && (
+													<button
+														onClick={() =>
+															handleClaimQuest(q.id, q.reward, claimDate)
+														}
+														style={{
+															background: '#0ba360',
+															color: '#fff',
+															border: 'none',
+															padding: '6px 14px',
+															borderRadius: '8px',
+															fontWeight: 'bold',
+															cursor: 'pointer'
+														}}
+													>
+														Забрать
+													</button>
+												)}
+												{isClaimed && (
+													<span
+														style={{ color: '#0ba360', fontWeight: 'bold' }}
+													>
+														✓ Получено
+													</span>
+												)}
+											</div>
 										</div>
-									</div>
-								))}
+									)
+								})}
 							</div>
 						</div>
 					)}

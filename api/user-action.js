@@ -67,7 +67,6 @@ export default async function handler(req, res) {
 			return res.status(200).json({ ok: true })
 		}
 
-		// СОХРАНЕНИЕ АКТИВНОГО ТИТУЛА И РАМКИ
 		if (action === 'update_appearance') {
 			const { error } = await supabase
 				.from('users')
@@ -126,6 +125,38 @@ export default async function handler(req, res) {
 				.from('users')
 				.update({ diamonds: profile.diamonds + reward })
 				.eq('id', user.id)
+			return res.status(200).json({ ok: true })
+		}
+
+		// НОВОЕ: НАГРАДА ЗА КВЕСТ
+		if (action === 'claim_quest') {
+			const { questId, reward, claimDate } = payload
+
+			const { data: existing } = await supabase
+				.from('user_quests_claims')
+				.select('id')
+				.eq('user_id', user.id)
+				.eq('quest_id', questId)
+				.eq('claim_date', claimDate)
+				.maybeSingle()
+			if (existing) throw new Error('Награда уже получена')
+
+			await supabase.from('user_quests_claims').insert({
+				user_id: user.id,
+				quest_id: questId,
+				claim_date: claimDate
+			})
+
+			const { data: profile } = await supabase
+				.from('users')
+				.select('diamonds')
+				.eq('id', user.id)
+				.single()
+			await supabase
+				.from('users')
+				.update({ diamonds: profile.diamonds + reward })
+				.eq('id', user.id)
+
 			return res.status(200).json({ ok: true })
 		}
 

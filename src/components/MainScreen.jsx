@@ -24,7 +24,9 @@ import {
 	getClaimedAchievements,
 	claimAchievementApi,
 	updateAppearanceDb,
-	adminGetPrices
+	adminGetPrices,
+	getClaimedQuests,
+	claimQuestApi
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
 
@@ -46,7 +48,19 @@ const todayKey = () => {
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// ХЕЛПЕРЫ ДЛЯ КЭША
+// Вычисляем начало недели (понедельник) и месяца
+const getWeekStart = date => {
+	const d = new Date(date)
+	const day = d.getDay() || 7
+	d.setDate(d.getDate() - day + 1)
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const getMonthStart = date => {
+	const d = new Date(date)
+	d.setDate(1)
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const getCache = (key, fallback) => {
 	try {
 		const data = localStorage.getItem(`cache_${key}`)
@@ -66,12 +80,12 @@ function MainScreen() {
 	const isTelegram = !!window.Telegram?.WebApp?.initData
 	const isAdmin = userId === 6556768668
 
-	// ИНИЦИАЛИЗИРУЕМ СТЕЙТЫ ИЗ КЭША (МГНОВЕННАЯ ЗАГРУЗКА)
 	const [profile, setProfile] = useState(() => getCache('profile', null))
 	const [logs, setLogs] = useState(() => getCache('logs', []))
 	const [chartTotals, setChartTotals] = useState(() => getCache('chart', {}))
 	const [ownedItems, setOwnedItems] = useState(() => getCache('inv', []))
 	const [claimedAchs, setClaimedAchs] = useState(() => getCache('achs', []))
+	const [claimedQuests, setClaimedQuests] = useState([])
 	const [families, setFamilies] = useState(() => getCache('families', []))
 	const [invites, setInvites] = useState(() => getCache('invites', []))
 	const [quests, setQuests] = useState(null)
@@ -85,7 +99,6 @@ function MainScreen() {
 		})
 	)
 
-	// ЕСЛИ ПРОФИЛЬ ЕСТЬ В КЭШЕ — НЕ ПОКАЗЫВАЕМ ЗАГРУЗКУ
 	const [isLoading, setIsLoading] = useState(!profile)
 	const [isAdding, setIsAdding] = useState(false)
 
@@ -126,6 +139,10 @@ function MainScreen() {
 	const tabsOrder = isAdmin
 		? ['today', 'diary', 'analytics', 'family', 'quests', 'admin']
 		: ['today', 'diary', 'analytics', 'family', 'quests']
+
+	const today = todayKey()
+	const weekStart = getWeekStart(new Date())
+	const monthStart = getMonthStart(new Date())
 
 	useEffect(() => {
 		const cleaned = localStorage.getItem('inventory_cleaned_v5')
@@ -203,6 +220,23 @@ function MainScreen() {
 			setCache('achs', newAchs)
 			setProfile(prev => {
 				const p = { ...prev, diamonds: (prev.diamonds || 0) + ach.reward }
+				setCache('profile', p)
+				return p
+			})
+		}
+	}
+
+	// ОБРАБОТЧИК ЗАБОРА КВЕСТА
+	const handleClaimQuest = async (questId, reward, claimDate) => {
+		const res = await claimQuestApi(questId, reward, claimDate)
+		if (res.error) {
+			showToast(res.error, 'error')
+		} else {
+			showToast(`Награда получена! +${reward} ✦`, 'success')
+			const newClaimed = [...claimedQuests, questId]
+			setClaimedQuests(newClaimed)
+			setProfile(prev => {
+				const p = { ...prev, diamonds: (prev.diamonds || 0) + reward }
 				setCache('profile', p)
 				return p
 			})
@@ -291,7 +325,6 @@ function MainScreen() {
 		}
 	}, [tab])
 
-	const today = todayKey()
 	const total = logs.reduce((sum, log) => sum + log.amount, 0)
 	const goal = Number(profile?.water_goal_ml || 2100)
 	const progress = Math.min(Math.round((total / goal) * 100), 100)
@@ -323,7 +356,6 @@ function MainScreen() {
 		setQuests(q)
 	}
 
-	// ПАРАЛЛЕЛЬНАЯ ЗАГРУЗКА (Promise.all) БЕЗ ВОДОПАДА
 	useEffect(() => {
 		async function loadData() {
 			try {
@@ -337,6 +369,15 @@ function MainScreen() {
 						getMyFamilies(userId, today),
 						getMyInvites(userId)
 					])
+
+				// Забираем забранные квесты на сегодня
+				const claimedToday = await getClaimedQuests(userId, today)
+				const claimedWeek = await getClaimedQuests(userId, weekStart)
+				const claimedMonth = await getClaimedQuests(userId, monthStart)
+				const allClaimed = [
+					...new Set([...claimedToday, ...claimedWeek, ...claimedMonth])
+				]
+				setClaimedQuests(allClaimed)
 
 				const { data: allLogs } = await supabase
 					.from('water_logs')
@@ -368,7 +409,6 @@ function MainScreen() {
 					titlesBought: titlesCount
 				}
 
-				// Обновляем стейты
 				setProfile(finalProfile)
 				setLogs(dbLogs)
 				setChartTotals(totals7Days)
@@ -378,7 +418,6 @@ function MainScreen() {
 				setInvites(invs)
 				setUserStats(finalStats)
 
-				// Сохраняем в кэш для мгновенного запуска в следующий раз
 				setCache('profile', finalProfile)
 				setCache('logs', dbLogs)
 				setCache('chart', totals7Days)
@@ -454,7 +493,6 @@ function MainScreen() {
 			date: today
 		}
 
-		// Оптимистичный UI (мгновенно)
 		const newLogs = [newLog, ...logs]
 		setLogs(newLogs)
 		setCache('logs', newLogs)
@@ -650,10 +688,6 @@ function MainScreen() {
 		setFamilyLoading(false)
 	}
 
-	async function handleClaimQuest(questId, reward) {
-		showToast(`Получено ${reward} алмазов! (В разработке)`, 'success')
-	}
-
 	const weekData = useMemo(
 		() =>
 			Array.from({ length: 7 }, (_, index) => {
@@ -691,7 +725,6 @@ function MainScreen() {
 		)
 	}
 
-	// ПОКАЗЫВАЕМ СКЕЛЕТОН ТОЛЬКО ЕСЛИ НЕТ КЭША
 	if (isLoading && !profile) {
 		return (
 			<main
@@ -706,7 +739,6 @@ function MainScreen() {
 					className="skeleton skeleton-text"
 					style={{ width: '70%', height: '30px', marginBottom: '30px' }}
 				></div>
-				<div className="skeleton skeleton-card"></div>
 				<div className="skeleton skeleton-card"></div>
 			</main>
 		)
@@ -865,10 +897,16 @@ function MainScreen() {
 				{tab === 'quests' && (
 					<QuestsTab
 						quests={quests}
-						handleClaimQuest={handleClaimQuest}
 						achievements={claimedAchs}
 						handleClaimAch={handleClaimAch}
 						userStats={userStats}
+						claimedQuests={claimedQuests}
+						handleClaimQuest={handleClaimQuest}
+						questClaimDates={{
+							personal: today,
+							week: weekStart,
+							month: monthStart
+						}}
 					/>
 				)}
 				{tab === 'admin' && isAdmin && <AdminTab />}

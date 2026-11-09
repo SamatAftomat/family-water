@@ -513,3 +513,20 @@ export async function adminRemoveItem(targetId, itemId) {
 export async function adminClearInventory(targetId) {
 	return callAdminApi('clear_inventory', { targetId })
 }
+// ==========================================
+// КВЕСТЫ (ЕЖЕДНЕВНЫЕ И СЕМЕЙНЫЕ)
+// ==========================================
+
+export async function getClaimedQuests(userId, dateStr) {
+	if (!supabase) return []
+	const { data } = await supabase
+		.from('user_quests_claims')
+		.select('quest_id')
+		.eq('user_id', userId)
+		.eq('claim_date', dateStr)
+	return data ? data.map(d => d.quest_id) : []
+}
+
+export async function claimQuestApi(questId, reward, claimDate) {
+	return callUserApi('claim_quest', { questId, reward, claimDate })
+}
