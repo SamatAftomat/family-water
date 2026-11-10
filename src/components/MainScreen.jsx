@@ -42,22 +42,57 @@ import SettingsModal from './modals/SettingsModal'
 import InfoModal from './modals/InfoModal'
 import ShopModal from './modals/ShopModal'
 import ProfileModal from './modals/ProfileModal'
+import TutorialModal from './modals/TutorialModal'
 
 const todayKey = () => {
 	const d = new Date()
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+	return d
+		.toLocaleDateString('ru-RU', {
+			timeZone: 'Europe/Moscow',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit'
+		})
+		.split('.')
+		.reverse()
+		.join('-')
 }
 
-const getWeekStart = date => {
-	const d = new Date(date)
+const getMoscowDate = () => {
+	return new Date(
+		new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' })
+	)
+}
+
+const getWeekStart = () => {
+	const d = getMoscowDate()
 	const day = d.getDay() || 7
 	d.setDate(d.getDate() - day + 1)
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+	return d
+		.toLocaleDateString('ru-RU', {
+			timeZone: 'Europe/Moscow',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit'
+		})
+		.split('.')
+		.reverse()
+		.join('-')
 }
-const getMonthStart = date => {
-	const d = new Date(date)
+
+const getMonthStart = () => {
+	const d = getMoscowDate()
 	d.setDate(1)
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+	return d
+		.toLocaleDateString('ru-RU', {
+			timeZone: 'Europe/Moscow',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit'
+		})
+		.split('.')
+		.reverse()
+		.join('-')
 }
 
 const getCache = (key, fallback) => {
@@ -107,8 +142,15 @@ function MainScreen() {
 	const [settings, setSettings] = useState(false)
 	const [activeInfo, setActiveInfo] = useState(null)
 	const [showShop, setShowShop] = useState(false)
-	const [isDark, setIsDark] = useState(
-		() => localStorage.getItem('family-water-theme') === 'dark'
+	const [isDark, setIsDark] = useState(() => {
+		const tg = window.Telegram?.WebApp
+		if (tg && tg.colorScheme) return tg.colorScheme === 'dark'
+		return localStorage.getItem('family-water-theme') === 'dark'
+	})
+
+	// Стейт для Туториала
+	const [showTutorial, setShowTutorial] = useState(
+		() => localStorage.getItem('tutorial_shown') !== 'true'
 	)
 
 	const [selectedMember, setSelectedMember] = useState(null)
@@ -140,8 +182,25 @@ function MainScreen() {
 		: ['today', 'diary', 'analytics', 'family', 'quests']
 
 	const today = todayKey()
-	const weekStart = getWeekStart(new Date())
-	const monthStart = getMonthStart(new Date())
+	const weekStart = getWeekStart()
+	const monthStart = getMonthStart()
+
+	// СИНХРОНИЗАЦИЯ ТЕМЫ С TELEGRAM
+	useEffect(() => {
+		const tg = window.Telegram?.WebApp
+		if (!tg) return
+
+		const updateTheme = () => {
+			setIsDark(tg.colorScheme === 'dark')
+		}
+
+		updateTheme() // Применяем при запуске
+		tg.onEvent('themeChanged', updateTheme) // Слушаем изменения
+
+		return () => {
+			tg.offEvent('themeChanged', updateTheme)
+		}
+	}, [])
 
 	useEffect(() => {
 		const cleaned = localStorage.getItem('inventory_cleaned_v5')
@@ -153,9 +212,25 @@ function MainScreen() {
 			setAppliedTheme('')
 			setAppliedTitle(null)
 			setAppliedFrame('')
-			setIsDark(false)
 		}
 	}, [])
+
+	// ФУНКЦИЯ ВИБРАЦИИ
+	const vibrate = (type = 'light') => {
+		const tg = window.Telegram?.WebApp
+		if (tg && tg.HapticFeedback) {
+			if (type === 'success') tg.HapticFeedback.notificationOccurred('success')
+			else if (type === 'warning')
+				tg.HapticFeedback.notificationOccurred('warning')
+			else if (type === 'selection') tg.HapticFeedback.selectionChanged()
+			else tg.HapticFeedback.impactOccurred(type)
+		}
+	}
+
+	const closeTutorial = () => {
+		localStorage.setItem('tutorial_shown', 'true')
+		setShowTutorial(false)
+	}
 
 	const applyItem = async item => {
 		if (item.id.startsWith('theme_')) {
@@ -193,6 +268,7 @@ function MainScreen() {
 			return false
 		}
 
+		vibrate('success')
 		showToast(`Куплено: ${item.title}`, 'success')
 		applyItem(item)
 
@@ -213,6 +289,7 @@ function MainScreen() {
 		if (res.error) {
 			showToast(res.error, 'error')
 		} else {
+			vibrate('success')
 			showToast(`Награда получена! +${ach.reward} ✦`, 'success')
 			const newAchs = [...claimedAchs, ach.id]
 			setClaimedAchs(newAchs)
@@ -230,6 +307,7 @@ function MainScreen() {
 		if (res.error) {
 			showToast(res.error, 'error')
 		} else {
+			vibrate('success')
 			showToast(`Награда получена! +${reward} ✦`, 'success')
 			const newClaimed = [...claimedQuests, questId]
 			setClaimedQuests(newClaimed)
@@ -241,8 +319,8 @@ function MainScreen() {
 		}
 	}
 
-	// ФУНКЦИЯ ШЕРИНГА ПРОГРЕССА
 	const handleShareProgress = () => {
+		vibrate('light')
 		const text = `💧 Я уже выпил ${total} мл воды из ${goal} мл!\n🔥 Мой стрик: ${effectiveStreak} дней.\n\nПрисоединяйся к нашему семейному трекеру воды! 💪`
 		const tg = window.Telegram?.WebApp
 		if (tg && tg.openTelegramLink) {
@@ -288,6 +366,7 @@ function MainScreen() {
 
 	const goToTab = (newTab, direction = 'fade') => {
 		if (newTab === tab) return
+		vibrate('selection') // Вибрация при смене вкладки
 		setTab(newTab)
 		if (direction !== 'fade') {
 			requestAnimationFrame(() => animateSlide(direction))
@@ -484,11 +563,17 @@ function MainScreen() {
 	async function addWater(amount) {
 		const value = Number(amount)
 		if (!Number.isFinite(value) || value <= 0) return
-		if (value > 2000)
+		if (value > 2000) {
+			vibrate('warning')
 			return showToast('Слишком много за один раз! Максимум 2000 мл.', 'error')
-		if (total + value > 5000)
+		}
+		if (total + value > 5000) {
+			vibrate('warning')
 			return showToast('Вы превысили суточный лимит в 5000 мл!', 'error')
+		}
 		if (isAdding) return
+
+		vibrate('light') // Вибрация при нажатии
 
 		const previousLogs = [...logs]
 		const previousProfile = { ...profile }
@@ -516,8 +601,7 @@ function MainScreen() {
 		const isCompleteNow = total + value >= goal
 
 		if (!wasComplete && isCompleteNow) {
-			if (window.Telegram?.WebApp?.HapticFeedback)
-				window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
+			vibrate('success')
 			confetti({
 				particleCount: 150,
 				spread: 80,
@@ -553,6 +637,7 @@ function MainScreen() {
 			setProfile(previousProfile)
 			setCache('logs', previousLogs)
 			setCache('profile', previousProfile)
+			vibrate('warning')
 			showToast(err.message, 'error')
 		} finally {
 			setIsAdding(false)
@@ -560,6 +645,7 @@ function MainScreen() {
 	}
 
 	const handleClaimReward = () => {
+		vibrate('success')
 		setShowReward(false)
 		const targetEl = diamondTargetRef.current
 		if (!targetEl) return
@@ -584,6 +670,7 @@ function MainScreen() {
 
 	async function removeLog(id) {
 		if (!window.confirm('Удалить эту запись?')) return
+		vibrate('light')
 		await deleteLogFromDb(id)
 		const newLogs = logs.filter(log => log.id !== id)
 		setLogs(newLogs)
@@ -595,6 +682,7 @@ function MainScreen() {
 	async function clearAllLogs() {
 		if (!window.confirm('Ты уверен, что хочешь удалить все записи за сегодня?'))
 			return
+		vibrate('warning')
 		const startOfDayISO = new Date(`${today}T00:00:00+03:00`).toISOString()
 		await clearTodayLogs(startOfDayISO)
 		setLogs([])
@@ -608,9 +696,12 @@ function MainScreen() {
 		const form = new FormData(event.currentTarget)
 		const name = String(form.get('name') || '').trim()
 		const weight = Number(form.get('weight'))
-		if (!name || !weight || weight <= 0)
+		if (!name || !weight || weight <= 0) {
+			vibrate('warning')
 			return showToast('Введите корректные данные', 'error')
+		}
 
+		vibrate('success')
 		const updated = {
 			...profile,
 			first_name: name,
@@ -627,6 +718,7 @@ function MainScreen() {
 	}
 
 	function shareId() {
+		vibrate('light')
 		const text = `Добавь меня в семейный трекер воды! Мой ID: ${userId}`
 		const tg = window.Telegram?.WebApp
 		if (tg && tg.openTelegramLink)
@@ -641,6 +733,7 @@ function MainScreen() {
 
 	async function handleCreateFamily(name) {
 		if (!name.trim()) return
+		vibrate('light')
 		setFamilyLoading(true)
 		const res = await createFamily(userId, name)
 		if (res.error) showToast(res.error, 'error')
@@ -653,6 +746,7 @@ function MainScreen() {
 
 	async function handleInvite(familyId, inviteeId, familyName) {
 		if (!inviteeId) return
+		vibrate('light')
 		setFamilyLoading(true)
 		const res = await inviteToFamily(
 			familyId,
@@ -669,6 +763,7 @@ function MainScreen() {
 	}
 
 	async function handleAcceptInvite(familyId) {
+		vibrate('success')
 		setFamilyLoading(true)
 		await acceptFamilyInvite(familyId, userId)
 		await loadFamilies()
@@ -677,6 +772,7 @@ function MainScreen() {
 	}
 
 	async function handleDeleteFamily(familyId) {
+		vibrate('warning')
 		setFamilyLoading(true)
 		await deleteFamily(familyId)
 		await loadFamilies()
@@ -685,6 +781,7 @@ function MainScreen() {
 	}
 
 	async function handleKickMember(familyId, memberId) {
+		vibrate('warning')
 		setFamilyLoading(true)
 		await kickFromFamily(familyId, memberId)
 		await loadFamilies()
@@ -693,6 +790,7 @@ function MainScreen() {
 	}
 
 	async function handleRenameFamily(familyId, newName) {
+		vibrate('light')
 		setFamilyLoading(true)
 		await renameFamily(familyId, newName)
 		await loadFamilies()
@@ -705,7 +803,16 @@ function MainScreen() {
 			Array.from({ length: 7 }, (_, index) => {
 				const date = new Date()
 				date.setDate(date.getDate() - (6 - index))
-				const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+				const key = date
+					.toLocaleDateString('ru-RU', {
+						timeZone: 'Europe/Moscow',
+						year: 'numeric',
+						month: '2-digit',
+						day: '2-digit'
+					})
+					.split('.')
+					.reverse()
+					.join('-')
 				return {
 					key,
 					label: date.toLocaleDateString('ru-RU', { weekday: 'short' }),
@@ -841,16 +948,29 @@ function MainScreen() {
 				<div
 					ref={diamondTargetRef}
 					className={diamondPop ? 'pop-anim' : ''}
-					onClick={() => setShowShop(true)}
+					onClick={() => {
+						vibrate('light')
+						setShowShop(true)
+					}}
 				>
 					<span>✦</span>
 					<strong>{profile?.diamonds || 0}</strong>
 				</div>
-				<div onClick={() => setActiveInfo('streak')}>
+				<div
+					onClick={() => {
+						vibrate('selection')
+						setActiveInfo('streak')
+					}}
+				>
 					<span>🔥</span>
 					<strong>{effectiveStreak}</strong>
 				</div>
-				<div onClick={() => setActiveInfo('progress')}>
+				<div
+					onClick={() => {
+						vibrate('selection')
+						setActiveInfo('progress')
+					}}
+				>
 					<span>◉</span>
 					<strong>{progress}%</strong>
 				</div>
@@ -1008,6 +1128,12 @@ function MainScreen() {
 			<ProfileModal
 				user={selectedMember}
 				onClose={() => setSelectedMember(null)}
+			/>
+
+			{/* ТУТОРИАЛ */}
+			<TutorialModal
+				show={showTutorial}
+				onClose={closeTutorial}
 			/>
 		</main>
 	)

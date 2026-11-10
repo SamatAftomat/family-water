@@ -1712,3 +1712,82 @@ body {
 	font-size: 14px;
 	text-align: center;
 }
+/* ==========================================
+   ТУТОРИАЛ (ОБУЧЕНИЕ)
+   ========================================== */
+.tutorial-modal {
+	position: relative;
+	width: min(100%, 400px);
+	margin: auto;
+	padding: 30px 24px;
+	border-radius: 24px;
+	background: #fff;
+	box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.15);
+	animation: slideUp 0.3s ease-out;
+}
+.dark-theme .tutorial-modal {
+	background: #1e293b;
+}
+.dark-theme .tutorial-modal h2 {
+	color: #f8fafc;
+}
+.dark-theme .tutorial-modal p {
+	color: #94a3b8;
+}
+
+.tutorial-icon {
+	font-size: 50px;
+	text-align: center;
+	margin-bottom: 12px;
+}
+
+.tutorial-modal h2 {
+	text-align: center;
+	margin: 0 0 8px;
+	color: #173f70;
+}
+
+.tutorial-modal > p {
+	text-align: center;
+	font-size: 14px;
+	color: #71869d;
+	margin: 0 0 24px;
+}
+
+.tutorial-step {
+	display: flex;
+	gap: 12px;
+	margin-bottom: 16px;
+	align-items: flex-start;
+}
+
+.tutorial-step-num {
+	width: 28px;
+	height: 28px;
+	background: #173f70;
+	color: #fff;
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-weight: bold;
+	font-size: 14px;
+	flex-shrink: 0;
+}
+
+.tutorial-step strong {
+	display: block;
+	color: #173f70;
+	font-size: 15px;
+	margin-bottom: 2px;
+}
+.dark-theme .tutorial-step strong {
+	color: #f8fafc;
+}
+
+.tutorial-step p {
+	margin: 0;
+	font-size: 13px;
+	color: #71869d;
+	line-height: 1.4;
+}

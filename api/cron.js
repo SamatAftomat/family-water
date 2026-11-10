@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
 	const botToken = process.env.TELEGRAM_BOT_TOKEN
 	const supabaseUrl = process.env.VITE_SUPABASE_URL
-	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY // Используем серверный ключ
+	const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 	if (!botToken || !supabaseUrl || !supabaseKey) {
 		return res.status(500).json({ error: 'В Vercel не добавлены переменные!' })
@@ -28,7 +28,6 @@ export default async function handler(req, res) {
 	const supabase = createClient(supabaseUrl, supabaseKey)
 	const now = new Date()
 
-	// Время по МСК
 	const moscowTime = new Date(now.getTime() + 3 * 60 * 60 * 1000)
 	const hour = moscowTime.getUTCHours()
 
@@ -36,36 +35,20 @@ export default async function handler(req, res) {
 	const startOfDay = new Date(`${today}T00:00:00+03:00`).toISOString()
 	const endOfDay = new Date(`${today}T23:59:59.999+03:00`).toISOString()
 
-	// НОВЫЕ ГРАНИЦЫ ВРЕМЕНИ
-	let messagePool = []
 	let isThreat = false
+	if (hour >= 21 && hour < 23) isThreat = true
 
-	if (hour >= 7 && hour < 11)
-		messagePool = morningMessages // Утро (7:00 - 10:59)
-	else if (hour >= 11 && hour < 17)
-		messagePool = dayMessages // День (11:00 - 16:59)
-	else if (hour >= 17 && hour < 21)
-		messagePool = eveningMessages // Вечер (17:00 - 20:59)
-	else if (hour >= 21 && hour < 23) {
-		messagePool = threatMessages
-		isThreat = true
-	} // Угрозы (21:00 - 22:59)
-	else
-		return res
-			.status(200)
-			.json({ msg: `Сейчас ночь (${hour} ч.), бот молчит.` })
+	if (hour < 7 || hour >= 23)
+		return res.status(200).json({ msg: 'Ночь, бот молчит' })
 
-	// Получаем всех пользователей
 	const { data: users, error } = await supabase.from('users').select('*')
 	if (error || !users || users.length === 0)
 		return res.status(200).json({ msg: 'В базе нет пользователей' })
 
 	let sentCount = 0
 	let skippedCount = 0
-	let errors = []
 
 	for (const user of users) {
-		// Защита от спама (если отправляли меньше 1.5 часов назад — пропускаем)
 		const lastNotified = user.last_notified_at
 			? new Date(user.last_notified_at)
 			: null
@@ -77,7 +60,6 @@ export default async function handler(req, res) {
 			}
 		}
 
-		// Проверка выпитой воды
 		const { data: logs } = await supabase
 			.from('water_logs')
 			.select('amount_ml')
@@ -86,56 +68,59 @@ export default async function handler(req, res) {
 			.lte('logged_at', endOfDay)
 
 		const totalDrunk = logs?.reduce((sum, log) => sum + log.amount_ml, 0) || 0
+		const goal = user.water_goal_ml || 2100
 
-		if (totalDrunk >= user.water_goal_ml) {
+		if (totalDrunk >= goal) {
 			skippedCount++
 			continue
 		}
 
-		// ФОРМИРУЕМ СООБЩЕНИЕ
-		let text = messagePool[Math.floor(Math.random() * messagePool.length)]
+		// УМНЫЕ НАПОМИНАНИЯ
+		let text = ''
+		const progress = totalDrunk / goal
 
 		if (isThreat) {
 			const streak = user.streak_days || 0
 			if (streak > 0) {
-				// Если стрик есть, подставляем цифру и пугаем
-				text = text.replace('{N}', streak)
+				text = `⚠️ Твой стрик ${streak} дней под угрозой! Выпей еще ${goal - totalDrunk} мл до конца дня!`
 			} else {
-				// Если стрика нет, отправляем обычное вечернее сообщение (без угроз)
-				text =
-					eveningMessages[Math.floor(Math.random() * eveningMessages.length)]
+				text = `⏰ Осталось совсем мало времени! Успей выпить ${goal - totalDrunk} мл воды.`
 			}
+		} else if (progress === 0) {
+			// Если еще ничего не пил
+			if (hour < 12)
+				text = `☀️ Доброе утро! Начни день со стакана воды. Твоя цель: ${goal} мл.`
+			else if (hour < 18)
+				text = `💧 Ты еще не пил воду сегодня! Самое время начать. Цель: ${goal} мл.`
+			else
+				text = `😱 Ты не выпил ни капли за день! Срочно выпей хотя бы стакан воды.`
+		} else if (progress < 0.5) {
+			// Выпил меньше половины
+			if (hour < 18)
+				text = `💧 Ты выпил ${totalDrunk} из ${goal} мл. Продолжай в том же духе!`
+			else
+				text = `🌆 Вечер уже близко. Ты выпил только ${totalDrunk} мл. Осталось ${goal - totalDrunk} мл!`
+		} else if (progress < 0.9) {
+			// Выпил больше половины
+			text = `💪 Отличный прогресс! Ты выпил ${totalDrunk} мл. Осталось совсем немного: ${goal - totalDrunk} мл!`
+		} else {
+			// Почти у цели
+			text = `🔥 Ты почти у цели! Осталось выпить всего ${goal - totalDrunk} мл. Сделай последний рывок!`
 		}
 
-		// ОТПРАВЛЯЕМ
-		const tgResponse = await fetch(
-			`https://api.telegram.org/bot${botToken}/sendMessage`,
-			{
+		if (text) {
+			await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ chat_id: user.id, text })
-			}
-		)
-
-		const tgResult = await tgResponse.json()
-
-		if (tgResult.ok) {
+			})
 			sentCount++
 			await supabase
 				.from('users')
 				.update({ last_notified_at: now.toISOString() })
 				.eq('id', user.id)
-		} else {
-			errors.push(`Ошибка Telegram для ${user.id}: ${tgResult.description}`)
 		}
 	}
 
-	res.status(200).json({
-		ok: true,
-		час_на_сервере_мск: hour,
-		всего_юзеров: users.length,
-		успешно_отправлено: sentCount,
-		пропущено: skippedCount,
-		ошибки: errors
-	})
+	res.status(200).json({ ok: true, sent: sentCount, skipped: skippedCount })
 }
