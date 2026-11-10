@@ -6,7 +6,6 @@ export default function TodayTab({
 	progress,
 	logs,
 	addWater,
-	isAdding,
 	showCustom,
 	setShowCustom,
 	customAmount,
@@ -14,12 +13,10 @@ export default function TodayTab({
 	removeLog,
 	goToTab,
 	invites,
-	onShareProgress,
-	streak
+	onShareProgress
 }) {
 	return (
 		<>
-			{/* БАННЕР ПРИГЛАШЕНИЯ */}
 			{invites && invites.length > 0 && (
 				<div
 					onClick={() => goToTab('family')}
@@ -105,29 +102,29 @@ export default function TodayTab({
 							: 'Норма выполнена!'}
 					</small>
 				</div>
+
+				{/* УБРАЛИ disabled={isAdding} ИЗ ВСЕХ КНОПОК */}
 				<div className="water-actions">
 					<button
 						className="water-button water-button-blue"
 						onClick={() => addWater(100)}
-						disabled={isAdding}
 					>
 						+100
 					</button>
 					<button
 						className="water-button water-button-cyan"
 						onClick={() => addWater(200)}
-						disabled={isAdding}
 					>
 						+200
 					</button>
 					<button
 						className="water-button water-button-green"
 						onClick={() => addWater(300)}
-						disabled={isAdding}
 					>
 						+300
 					</button>
 				</div>
+
 				<button
 					className="custom-water"
 					onClick={() => setShowCustom(!showCustom)}
@@ -144,16 +141,10 @@ export default function TodayTab({
 							onChange={e => setCustomAmount(e.target.value.replace(/\D/g, ''))}
 							autoFocus
 						/>
-						<button
-							onClick={() => addWater(customAmount)}
-							disabled={isAdding}
-						>
-							Добавить
-						</button>
+						<button onClick={() => addWater(customAmount)}>Добавить</button>
 					</div>
 				)}
 
-				{/* КНОПКА ПОДЕЛИТЬСЯ (В СТИЛЕ "ДРУГОЕ КОЛИЧЕСТВО") */}
 				<button
 					className="custom-water"
 					onClick={onShareProgress}

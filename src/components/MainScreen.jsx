@@ -134,7 +134,6 @@ function MainScreen() {
 	)
 
 	const [isLoading, setIsLoading] = useState(!profile)
-	const [isAdding, setIsAdding] = useState(false)
 
 	const [tab, setTab] = useState('today')
 	const [customAmount, setCustomAmount] = useState('')
@@ -148,7 +147,6 @@ function MainScreen() {
 		return localStorage.getItem('family-water-theme') === 'dark'
 	})
 
-	// Стейт для Туториала
 	const [showTutorial, setShowTutorial] = useState(
 		() => localStorage.getItem('tutorial_shown') !== 'true'
 	)
@@ -185,21 +183,15 @@ function MainScreen() {
 	const weekStart = getWeekStart()
 	const monthStart = getMonthStart()
 
-	// СИНХРОНИЗАЦИЯ ТЕМЫ С TELEGRAM
 	useEffect(() => {
 		const tg = window.Telegram?.WebApp
 		if (!tg) return
 
-		const updateTheme = () => {
-			setIsDark(tg.colorScheme === 'dark')
-		}
+		const updateTheme = () => setIsDark(tg.colorScheme === 'dark')
+		updateTheme()
+		tg.onEvent('themeChanged', updateTheme)
 
-		updateTheme() // Применяем при запуске
-		tg.onEvent('themeChanged', updateTheme) // Слушаем изменения
-
-		return () => {
-			tg.offEvent('themeChanged', updateTheme)
-		}
+		return () => tg.offEvent('themeChanged', updateTheme)
 	}, [])
 
 	useEffect(() => {
@@ -215,7 +207,6 @@ function MainScreen() {
 		}
 	}, [])
 
-	// ФУНКЦИЯ ВИБРАЦИИ
 	const vibrate = (type = 'light') => {
 		const tg = window.Telegram?.WebApp
 		if (tg && tg.HapticFeedback) {
@@ -366,7 +357,7 @@ function MainScreen() {
 
 	const goToTab = (newTab, direction = 'fade') => {
 		if (newTab === tab) return
-		vibrate('selection') // Вибрация при смене вкладки
+		vibrate('selection')
 		setTab(newTab)
 		if (direction !== 'fade') {
 			requestAnimationFrame(() => animateSlide(direction))
@@ -560,6 +551,7 @@ function MainScreen() {
 		localStorage.setItem('family-water-theme', isDark ? 'dark' : 'light')
 	}, [isDark])
 
+	// МГНОВЕННОЕ ДОБАВЛЕНИЕ ВОДЫ (БЕЗ БЛОКИРОВКИ)
 	async function addWater(amount) {
 		const value = Number(amount)
 		if (!Number.isFinite(value) || value <= 0) return
@@ -571,13 +563,10 @@ function MainScreen() {
 			vibrate('warning')
 			return showToast('Вы превысили суточный лимит в 5000 мл!', 'error')
 		}
-		if (isAdding) return
 
-		vibrate('light') // Вибрация при нажатии
+		vibrate('light')
 
-		const previousLogs = [...logs]
-		const previousProfile = { ...profile }
-
+		// 1. МГНОВЕННО ОБНОВЛЯЕМ ИНТЕРФЕЙС (Оптимистичный UI)
 		const tempId = `temp-${Date.now()}`
 		const newLog = {
 			id: tempId,
@@ -595,10 +584,18 @@ function MainScreen() {
 		setCache('logs', newLogs)
 		setCustomAmount('')
 		setShowCustom(false)
-		setIsAdding(true)
 
 		const wasComplete = total >= goal
 		const isCompleteNow = total + value >= goal
+
+		// Предупреждение о переизбытке (если выпил > 1.5 нормы, но до этого было меньше)
+		if (total <= goal * 1.5 && total + value > goal * 1.5) {
+			vibrate('warning')
+			showToast(
+				'⚠️ Вы выпили в 1.5 раза больше нормы! Не переусердствуйте.',
+				'warning'
+			)
+		}
 
 		if (!wasComplete && isCompleteNow) {
 			vibrate('success')
@@ -611,8 +608,11 @@ function MainScreen() {
 			setShowReward(true)
 		}
 
+		// 2. ОТПРАВЛЯЕМ НА СЕРВЕР В ФОНЕ
 		try {
 			await addWaterToDb(userId, value, profile)
+
+			// Синхронизируем с сервером, чтобы обновить алмазы и стрик
 			const updatedProfile = await getUserProfile(userId)
 			const updatedLogs = await getTodayLogs(userId, today)
 			const totals7Days = await getLast7DaysTotal(userId)
@@ -633,14 +633,12 @@ function MainScreen() {
 			const q = await getQuestProgress(userId, today, families)
 			setQuests(q)
 		} catch (err) {
-			setLogs(previousLogs)
-			setProfile(previousProfile)
-			setCache('logs', previousLogs)
-			setCache('profile', previousProfile)
+			// Если ошибка — откатываем назад
+			const prevLogs = logs.filter(l => l.id !== tempId)
+			setLogs(prevLogs)
+			setCache('logs', prevLogs)
 			vibrate('warning')
 			showToast(err.message, 'error')
-		} finally {
-			setIsAdding(false)
 		}
 	}
 
@@ -984,7 +982,6 @@ function MainScreen() {
 						progress={progress}
 						logs={logs}
 						addWater={addWater}
-						isAdding={isAdding}
 						showCustom={showCustom}
 						setShowCustom={setShowCustom}
 						customAmount={customAmount}
@@ -993,7 +990,6 @@ function MainScreen() {
 						goToTab={goToTab}
 						invites={invites}
 						onShareProgress={handleShareProgress}
-						streak={effectiveStreak}
 					/>
 				)}
 				{tab === 'diary' && (
@@ -1130,7 +1126,6 @@ function MainScreen() {
 				onClose={() => setSelectedMember(null)}
 			/>
 
-			{/* ТУТОРИАЛ */}
 			<TutorialModal
 				show={showTutorial}
 				onClose={closeTutorial}
