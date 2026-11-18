@@ -50,8 +50,25 @@ export default async function handler(req, res) {
 		if (action === 'get_users') {
 			const { data: users } = await supabase
 				.from('users')
-				.select('id, first_name, diamonds, streak_days, is_banned')
+				.select(
+					'id, first_name, diamonds, streak_days, goal_reached_date, is_banned'
+				)
 				.order('created_at', { ascending: false })
+
+			// Strick показываем живой: норма выполнена сегодня или вчера
+			const msk = new Date(Date.now() + 3 * 60 * 60 * 1000)
+			const today = msk.toISOString().slice(0, 10)
+			const yesterday = new Date(msk.getTime() - 24 * 60 * 60 * 1000)
+				.toISOString()
+				.slice(0, 10)
+			const list = (users || []).map(u => ({
+				...u,
+				streak_days:
+					u.goal_reached_date === today || u.goal_reached_date === yesterday
+						? u.streak_days || 0
+						: 0
+			}))
+
 			const { count: familyCount } = await supabase
 				.from('families')
 				.select('*', { count: 'exact', head: true })
@@ -60,16 +77,14 @@ export default async function handler(req, res) {
 				.select('amount_ml')
 			const totalWater = (logs || []).reduce((sum, l) => sum + l.amount_ml, 0)
 
-			return res
-				.status(200)
-				.json({
-					users: users || [],
-					stats: {
-						totalUsers: users?.length || 0,
-						totalWater,
-						totalFamilies: familyCount || 0
-					}
-				})
+			return res.status(200).json({
+				users: list,
+				stats: {
+					totalUsers: list.length,
+					totalWater,
+					totalFamilies: familyCount || 0
+				}
+			})
 		}
 
 		if (action === 'update_diamonds') {

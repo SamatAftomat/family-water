@@ -41,6 +41,10 @@ export default async function handler(req, res) {
 	if (hour < 7 || hour >= 23)
 		return res.status(200).json({ msg: 'Ночь, бот молчит' })
 
+	const yesterday = new Date(moscowTime.getTime() - 24 * 60 * 60 * 1000)
+		.toISOString()
+		.slice(0, 10)
+
 	const { data: users, error } = await supabase.from('users').select('*')
 	if (error || !users || users.length === 0)
 		return res.status(200).json({ msg: 'В базе нет пользователей' })
@@ -79,10 +83,14 @@ export default async function handler(req, res) {
 		let text = ''
 		const progress = totalDrunk / goal
 
+		// Strick живой, только если норма выполнена сегодня или вчера
+		const reached = user.goal_reached_date
+		const liveStreak =
+			reached === today || reached === yesterday ? user.streak_days || 0 : 0
+
 		if (isThreat) {
-			const streak = user.streak_days || 0
-			if (streak > 0) {
-				text = `⚠️ Твой стрик ${streak} дней под угрозой! Выпей еще ${goal - totalDrunk} мл до конца дня!`
+			if (liveStreak > 0) {
+				text = `⚠️ Твой стрик ${liveStreak} дней под угрозой! Выпей еще ${goal - totalDrunk} мл до конца дня!`
 			} else {
 				text = `⏰ Осталось совсем мало времени! Успей выпить ${goal - totalDrunk} мл воды.`
 			}

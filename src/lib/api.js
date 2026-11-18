@@ -1,5 +1,6 @@
 import { supabase } from './telegram'
 import questsData from '../data/quests.json'
+import { getEffectiveStreak } from './streak'
 
 // ==========================================
 // БАЗОВЫЕ ФУНКЦИИ ПРОФИЛЯ И ВОДЫ
@@ -149,7 +150,7 @@ export async function getMyFamilies(userId, dateStr) {
 	const { data: profiles } = await supabase
 		.from('users')
 		.select(
-			'id, first_name, water_goal_ml, active_title_id, active_frame_css, streak_days'
+			'id, first_name, water_goal_ml, active_title_id, active_frame_css, streak_days, goal_reached_date'
 		)
 		.in('id', allUserIds)
 
@@ -181,7 +182,7 @@ export async function getMyFamilies(userId, dateStr) {
 					),
 					active_title_id: prof?.active_title_id || 'title_default',
 					active_frame_css: prof?.active_frame_css || '',
-					streak_days: prof?.streak_days || 0
+					streak_days: getEffectiveStreak(prof, dateStr)
 				}
 			})
 		return { ...fam, members }

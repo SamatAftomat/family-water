@@ -30,6 +30,7 @@ import {
 	claimQuestApi
 } from '../lib/api'
 import { supabase } from '../lib/telegram'
+import { getEffectiveStreak } from '../lib/streak'
 
 import NavButton from './NavButton'
 import TodayTab from './tabs/TodayTab'
@@ -415,18 +416,10 @@ function MainScreen() {
 	const goal = Number(profile?.water_goal_ml || 2100)
 	const progress = Math.min(Math.round((total / goal) * 100), 100)
 
-	const effectiveStreak = useMemo(() => {
-		if (!profile?.goal_reached_date) return 0
-		const yesterday = new Date()
-		yesterday.setDate(yesterday.getDate() - 1)
-		const yesterdayStr = yesterday.toISOString().slice(0, 10)
-		if (
-			profile.goal_reached_date === today ||
-			profile.goal_reached_date === yesterdayStr
-		)
-			return profile.streak_days || 0
-		return 0
-	}, [profile, today])
+	const effectiveStreak = useMemo(
+		() => getEffectiveStreak(profile, today),
+		[profile, today]
+	)
 
 	const loadFamilies = async () => {
 		const [fams, invs] = await Promise.all([
@@ -488,7 +481,7 @@ function MainScreen() {
 					}
 				const finalStats = {
 					totalWater,
-					streak: finalProfile?.streak_days || 0,
+					streak: getEffectiveStreak(finalProfile, today),
 					familyCount: ownedFamiliesCount,
 					maxFamilyMembers: maxMembers,
 					titlesBought: titlesCount
