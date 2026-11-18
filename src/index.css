@@ -1493,6 +1493,47 @@ body {
 		linear-gradient(45deg, red, orange, yellow, green, blue, purple) border-box !important;
 	color: #fff !important;
 }
+
+/* Улучшения круга, набора объёма и графика аналитики */
+.progress-card { grid-template-columns: 176px minmax(0, 1fr); gap: 18px; padding: 22px; }
+.progress-ring { width: 168px; height: 168px; }
+.progress-ring circle { stroke-width: 7; }
+.ring-center strong { font-size: 29px; }
+.ring-center small { font-size: 12px; }
+.water-actions { gap: 12px; margin-top: 20px; }
+.water-button { min-height: 58px; height: 58px; border-radius: 16px; font-size: 18px; }
+.custom-form { align-items: center; gap: 10px; padding: 8px; border: 1px solid rgba(255,255,255,.3); border-radius: 16px; background: rgba(255,255,255,.12); }
+.custom-form input { height: 56px; padding: 0 16px; font-size: 21px; text-align: center; }
+.custom-form input::placeholder { color: #8299ad; font-size: 16px; font-weight: 500; }
+.custom-unit { margin-left: -48px; z-index: 1; color: #617d97; font-weight: 700; pointer-events: none; }
+.custom-form button { min-width: 120px; height: 56px; }
+.custom-form button:disabled { opacity: .45; cursor: not-allowed; }
+.chart-container { height: 270px; padding: 38px 14px 12px; }
+.chart-line { top: 74px; border-top-width: 1px; }
+.chart-line-label { top: -20px; padding: 3px 7px; color: #fff; background: #1886ad; }
+.chart-bar-wrap { position: relative; align-items: flex-end; }
+.chart-value { position: absolute; bottom: calc(100% + 5px); color: #526b83; font-size: 10px; font-weight: 700; white-space: nowrap; }
+.chart-goal-mark { margin-top: 2px; color: #14946b; font-size: 9px; font-weight: 800; }
+.analytics-hint { margin: 12px 2px 0; color: #71869d; font-size: 12px; line-height: 1.5; }
+
+@media (max-width: 520px) {
+  .progress-card { grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 12px; padding: 20px 16px; }
+  .progress-ring { width: min(68vw, 220px); height: min(68vw, 220px); }
+  .ring-center strong { font-size: 35px; }
+  .ring-center small { font-size: 13px; }
+  .progress-copy { align-items: center; text-align: center; }
+  .progress-copy strong { font-size: 25px; }
+  .water-actions { width: 100%; gap: 10px; }
+  .water-button { min-height: 60px; height: 60px; font-size: 18px; }
+  .custom-form { width: 100%; }
+  .custom-form input { flex: 1; width: 1px; }
+  .custom-form button { min-width: 106px; padding: 0 12px; }
+  .chart-container { height: 250px; padding-right: 8px; padding-left: 8px; }
+  .chart-line { left: 8px; right: 8px; }
+  .chart-bar { max-width: 26px; }
+  .chart-value { font-size: 9px; }
+  .analytics-summary { gap: 12px; }
+}
 /* ==========================================
    ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ
    ========================================== */

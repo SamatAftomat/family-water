@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import confetti from 'canvas-confetti'
 import { getTelegramUser } from '../lib/telegram'
+import { pickMessage } from '../data/waterMessages'
 import {
 	getUserProfile,
 	getTodayLogs,
@@ -110,8 +111,9 @@ const setCache = (key, data) => {
 }
 
 function MainScreen() {
-	const userId = Number(getTelegramUser().id)
-	const isTelegram = !!window.Telegram?.WebApp?.initData
+	const telegramUser = getTelegramUser()
+	const userId = Number(telegramUser.id)
+	const isTelegram = userId !== 100000001 && !!window.Telegram?.WebApp?.initData
 	const isAdmin = userId === 6556768668
 
 	const [profile, setProfile] = useState(() => getCache('profile', null))
@@ -166,6 +168,7 @@ function MainScreen() {
 	)
 
 	const [showReward, setShowReward] = useState(false)
+	const [rewardMessage, setRewardMessage] = useState('')
 	const [diamondPop, setDiamondPop] = useState(false)
 	const diamondTargetRef = useRef(null)
 
@@ -587,9 +590,22 @@ function MainScreen() {
 
 		const wasComplete = total >= goal
 		const isCompleteNow = total + value >= goal
+		const newTotal = total + value
+		const progress = goal > 0 ? newTotal / goal : 0
+
+		// Категория сообщения зависит от прогресса относительно нормы
+		const category =
+			progress >= 1.2
+				? 'superResult'
+				: progress >= 1
+					? 'complete'
+					: progress >= 0.5
+						? 'encourage'
+						: 'motivate'
 
 		// Предупреждение о переизбытке (если выпил > 1.5 нормы, но до этого было меньше)
-		if (total <= goal * 1.5 && total + value > goal * 1.5) {
+		const overdidWarning = total <= goal * 1.5 && newTotal > goal * 1.5
+		if (overdidWarning) {
 			vibrate('warning')
 			showToast(
 				'⚠️ Вы выпили в 1.5 раза больше нормы! Не переусердствуйте.',
@@ -605,6 +621,7 @@ function MainScreen() {
 				origin: { y: 0.6 },
 				colors: ['#0ba360', '#3cba92', '#25b2c1', '#4facfe', '#ffffff']
 			})
+			setRewardMessage(pickMessage('complete'))
 			setShowReward(true)
 		}
 
@@ -628,7 +645,16 @@ function MainScreen() {
 				JSON.stringify(updatedProfile)
 			)
 
-			showToast(`+${value} мл добавлено! 💧`, 'success')
+			// Контекстное сообщение: мотивация / подбадривание / поздравление / супер-результат
+			if (isCompleteNow && !overdidWarning) {
+				const overGoal = progress >= 1.2
+				showToast(
+					overGoal ? pickMessage('superResult') : `+${value} мл 💧`,
+					'success'
+				)
+			} else if (!isCompleteNow) {
+				showToast(pickMessage(category), 'success')
+			}
 
 			const q = await getQuestProgress(userId, today, families)
 			setQuests(q)
@@ -823,25 +849,6 @@ function MainScreen() {
 	const weekTotal = weekData.reduce((sum, day) => sum + day.total, 0)
 	const weekAverage = Math.round(weekTotal / 7)
 
-	if (!isTelegram) {
-		return (
-			<div
-				style={{
-					display: 'flex',
-					justifyContent: 'center',
-					alignItems: 'center',
-					height: '100vh',
-					background: isDark ? '#0f172a' : '#eef5fb',
-					color: isDark ? '#fff' : '#12355b',
-					fontSize: '18px',
-					fontWeight: 'bold'
-				}}
-			>
-				Доступ ограничен
-			</div>
-		)
-	}
-
 	if (isLoading && !profile) {
 		return (
 			<main
@@ -861,7 +868,7 @@ function MainScreen() {
 		)
 	}
 
-	if (profile?.is_banned) {
+	if (profile?.is_banned && isTelegram) {
 		return (
 			<div
 				style={{
@@ -1090,6 +1097,7 @@ function MainScreen() {
 			<RewardModal
 				showReward={showReward}
 				handleClaimReward={handleClaimReward}
+				message={rewardMessage}
 			/>
 			<SettingsModal
 				settings={settings}

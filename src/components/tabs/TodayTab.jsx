@@ -89,8 +89,8 @@ export default function TodayTab({
 						/>
 					</svg>
 					<div className="ring-center">
-						<strong>{total}</strong>
-						<small>из {goal} мл</small>
+						<strong>{progress}%</strong>
+						<small>{total} из {goal} мл</small>
 					</div>
 				</div>
 				<div className="progress-copy">
@@ -134,14 +134,18 @@ export default function TodayTab({
 				{showCustom && (
 					<div className="custom-form">
 						<input
-							type="text"
+							type="number"
 							inputMode="numeric"
-							pattern="[0-9]*"
+							min="1"
+							max="2000"
+							placeholder="Например, 250"
+							aria-label="Количество воды в миллилитрах"
 							value={customAmount}
-							onChange={e => setCustomAmount(e.target.value.replace(/\D/g, ''))}
+							onChange={e => setCustomAmount(e.target.value.replace(/\D/g, '').slice(0, 4))}
 							autoFocus
 						/>
-						<button onClick={() => addWater(customAmount)}>Добавить</button>
+						<span className="custom-unit">мл</span>
+						<button disabled={!customAmount || Number(customAmount) <= 0} onClick={() => addWater(customAmount)}>Добавить</button>
 					</div>
 				)}
 

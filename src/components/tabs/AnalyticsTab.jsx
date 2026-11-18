@@ -11,7 +11,7 @@ export default function AnalyticsTab({
 
 			<div className="chart-container">
 				<div className="chart-line">
-					<span className="chart-line-label">{goal}</span>
+					<span className="chart-line-label">Цель {goal} мл</span>
 				</div>
 
 				<div className="chart-grid">
@@ -21,10 +21,11 @@ export default function AnalyticsTab({
 							key={day.key}
 						>
 							<div className="chart-bar-wrap">
+								<span className="chart-value">{day.total ? `${day.total}` : '—'}</span>
 								<div
 									className="chart-bar"
 									style={{
-										height: `${Math.min((day.total / goal) * 100, 96)}%`,
+										height: `${Math.max(day.total ? 6 : 0, Math.min((day.total / goal) * 100, 100))}%`,
 										background:
 											day.total >= goal
 												? 'linear-gradient(#0ba360, #3cba92)'
@@ -34,6 +35,7 @@ export default function AnalyticsTab({
 								/>
 							</div>
 							<span className="chart-day-label">{day.label}</span>
+							{day.total >= goal && <span className="chart-goal-mark">Цель</span>}
 						</div>
 					))}
 				</div>
@@ -52,6 +54,7 @@ export default function AnalyticsTab({
 					Среднее за день <strong>{weekAverage} мл</strong>
 				</span>
 			</div>
+			<p className="analytics-hint">Пунктирная линия показывает дневную цель. Зелёные столбцы — дни, когда цель выполнена.</p>
 		</section>
 	)
 }
